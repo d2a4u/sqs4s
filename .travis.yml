@@ -1,0 +1,19 @@
+sudo: required
+language: scala
+services:
+- sqs4s
+jobs:
+  include:
+  - stage: test
+    script:
+    - sbt ++$TRAVIS_SCALA_VERSION clean update test
+    jdk: oraclejdk8
+
+before_cache:
+  - find $HOME/.ivy2 -name "ivydata-*.properties" -print -delete
+  - find $HOME/.sbt  -name "*.lock"               -print -delete
+
+cache:
+  directories:
+    - $HOME/.ivy2/
+    - $HOME/.sbt/
