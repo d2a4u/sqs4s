@@ -62,9 +62,7 @@ class SqsConsumerSpec extends FlatSpec with Matchers with BeforeAndAfterAll {
       )
     val consumed = for {
       _ <- producerStrSrc.use(_.single[Event, String, TextMessage](event))
-      events <- consumerStrSrc.use(
-        _.consume().flatMap(_.take(1).compile.toList)
-      )
+      events <- consumerStrSrc.use(_.consume().take(1).compile.toList)
     } yield events
     consumed.unsafeRunSync() contains theSameElementsAs(List(event))
   }
@@ -87,10 +85,35 @@ class SqsConsumerSpec extends FlatSpec with Matchers with BeforeAndAfterAll {
       _ <- producerBinSrc.use(
         _.single[Event, Stream[IO, Byte], BytesMessage](event)
       )
-      events <- consumerBinSrc.use(
-        _.consume().flatMap(_.take(1).compile.toList)
-      )
+      events <- consumerBinSrc.use(_.consume().take(1).compile.toList)
     } yield events
     consumed.unsafeRunSync() contains theSameElementsAs(List(event))
+  }
+
+  it should "manually acknowledge message" in new Fixture {
+    client.createQueue(txtQueueName)
+    val events = Stream.fromIterator[IO, Event](
+      (0 to 10).map(i => Event(i, "test")).toIterator
+    )
+    val producerStrSrc =
+      SqsProducer
+        .resource[IO](txtQueueName, Session.AUTO_ACKNOWLEDGE, client)
+    val consumerStrSrc =
+      SqsConsumer.resourceStr[IO, Event](
+        txtQueueName,
+        Session.CLIENT_ACKNOWLEDGE,
+        20,
+        client
+      )
+    val consumed = for {
+      _ <- producerStrSrc.use(
+        _.multiple[Event, String, TextMessage](events).compile.drain
+      )
+      acked <- consumerStrSrc.use { consumer =>
+        consumer.receive().map(_.original).through(consumer.ack()).compile.drain
+      }
+    } yield acked
+
+    consumed.unsafeRunSync() shouldEqual {}
   }
 }
