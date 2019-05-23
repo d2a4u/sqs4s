@@ -25,10 +25,13 @@ private[sqs4s] trait Connection {
       Sync[F].defer(MonadError[F, Throwable].fromTry(Try(sqsConn.close())))
     }
 
-  def session[F[_]: Sync](mode: Int): SQSConnection => Resource[F, Session] =
+  def session[F[_]: Sync](
+    acknowledgeMode: Int
+  ): SQSConnection => Resource[F, Session] =
     conn =>
       Resource.make[F, Session](
-        MonadError[F, Throwable].fromTry(Try(conn.createSession(false, mode)))
+        MonadError[F, Throwable]
+          .fromTry(Try(conn.createSession(false, acknowledgeMode)))
       )(
         sess =>
           Sync[F].defer(

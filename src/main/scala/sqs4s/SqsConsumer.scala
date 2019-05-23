@@ -29,14 +29,15 @@ abstract class SqsConsumer[
     *
     * @return Stream of T
     */
-  def consume(): F[Stream[F, T]] =
+  def consume(): Stream[F, T] =
     if (acknowledgeMode == Session.AUTO_ACKNOWLEDGE) {
-      for {
+      val streamF = for {
         q <- Queue.bounded[F, T](internalQueueSize)
         _ <- consume(q.enqueue)
       } yield q.dequeue
+      Stream.eval(streamF).flatten
     } else
-      MonadError[F, Throwable].raiseError(
+      Stream.raiseError[F](
         new JMSException("Only auto acknowledge is supported")
       )
 
@@ -71,11 +72,13 @@ abstract class SqsConsumer[
     * @return Stream of SqsMessage where SqsMessage is a wrapper around T and M so that
     *         M is accessible for acknowledge call (via [[ack]])
     */
-  def receive(): F[Stream[F, SqsMessage[T, M]]] =
-    for {
+  def receive(): Stream[F, SqsMessage[T, M]] = {
+    val streamF = for {
       q <- Queue.bounded[F, SqsMessage[T, M]](internalQueueSize)
       _ <- receive(q.enqueue)
     } yield q.dequeue
+    Stream.eval(streamF).flatten
+  }
 
   def receive(callback: Pipe[F, SqsMessage[T, M], Unit]): F[Unit] =
     consumeRaw(_.flatMap { m =>

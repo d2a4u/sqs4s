@@ -28,29 +28,30 @@ private[sqs4s] object ConsumerResource extends Connection {
 
   def resourceStr[F[_]: ConcurrentEffect: Timer: ContextShift, T](
     queueName: String,
-    mode: Int,
+    acknowledgeMode: Int,
     internalQueueSize: Int = 20,
     client: AmazonSQSAsync
   )(implicit decoder: MessageDecoder[F, TextMessage, String, T]
   ): Resource[F, SqsConsumer[F, TextMessage, String, T]] =
-    javaConsumer[F](queueName, mode, internalQueueSize, client).map { csm =>
-      new SqsConsumer[F, TextMessage, String, T](
-        queueName,
-        mode,
-        internalQueueSize,
-        csm
-      ) {}
+    javaConsumer[F](queueName, acknowledgeMode, internalQueueSize, client).map {
+      csm =>
+        new SqsConsumer[F, TextMessage, String, T](
+          queueName,
+          acknowledgeMode,
+          internalQueueSize,
+          csm
+        ) {}
     }
 
   private def javaConsumer[F[_]: Sync](
     queueName: String,
-    mode: Int,
+    acknowledgeMode: Int,
     internalQueueSize: Int = 20,
     client: AmazonSQSAsync
   ): Resource[F, MessageConsumer] =
     for {
       conn <- connection[F](client)
-      sess <- session[F](mode).apply(conn)
+      sess <- session[F](acknowledgeMode).apply(conn)
       queue <- queue[F](queueName).apply(sess)
       _ <- Resource.liftF(Sync[F].delay(conn.start()))
       csm <- Resource.make[F, MessageConsumer](
