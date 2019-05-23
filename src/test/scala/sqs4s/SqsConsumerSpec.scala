@@ -93,7 +93,7 @@ class SqsConsumerSpec extends FlatSpec with Matchers with BeforeAndAfterAll {
   it should "manually acknowledge message" in new Fixture {
     client.createQueue(txtQueueName)
     val events = Stream.fromIterator[IO, Event](
-      (0 to 10).map(i => Event(i, "test")).toIterator
+      (0 to 9).map(i => Event(i, "test")).toIterator
     )
     val producerStrSrc =
       SqsProducer
@@ -110,7 +110,13 @@ class SqsConsumerSpec extends FlatSpec with Matchers with BeforeAndAfterAll {
         _.multiple[Event, String, TextMessage](events).compile.drain
       )
       acked <- consumerStrSrc.use { consumer =>
-        consumer.receive().map(_.original).through(consumer.ack()).compile.drain
+        consumer
+          .receive()
+          .map(_.original)
+          .through(consumer.ack())
+          .take(10)
+          .compile
+          .drain
       }
     } yield acked
 
