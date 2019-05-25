@@ -6,7 +6,7 @@ jobs:
   include:
   - stage: test
     script:
-    - sbt ++$TRAVIS_SCALA_VERSION clean update test
+    - sbt ++$TRAVIS_SCALA_VERSION clean update coverage test coverageReport
     jdk: oraclejdk8
 
 before_cache:
@@ -17,3 +17,6 @@ cache:
   directories:
     - $HOME/.ivy2/
     - $HOME/.sbt/
+
+after_success:
+  - bash <(curl -s https://codecov.io/bash)
