@@ -2,6 +2,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Build Status](https://travis-ci.com/d2a4u/sqs4s.svg?branch=master)](https://travis-ci.com/d2a4u/sqs4s)
+[![codecov](https://codecov.io/gh/d2a4u/sqs4s/branch/master/graph/badge.svg)](https://codecov.io/gh/d2a4u/sqs4s)
 
 Streaming client for AWS SQS using fs2
 
