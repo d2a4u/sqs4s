@@ -9,7 +9,14 @@ import fs2._
 import io.circe.generic.auto._
 import io.circe.parser._
 import io.circe.syntax._
-import sqs4s.serialization.{MessageDeserializer, MessageSerializer}
+import javax.jms.TextMessage
+import sqs4s.serialization.{
+  MessageDecoder,
+  MessageDeserializer,
+  MessageEncoder,
+  MessageSerializer
+}
+import sqs4s.serialization.instances._
 
 import scala.util.Try
 
@@ -61,4 +68,9 @@ object Event {
         event
       }
     }
+
+  implicit val encoder: MessageEncoder[IO, Event, String, TextMessage] =
+    strMsg[IO, Event]
+  implicit val decoder: MessageDecoder[IO, TextMessage, String, Event] =
+    strMsg[IO, Event]
 }
