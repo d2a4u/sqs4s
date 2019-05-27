@@ -7,7 +7,7 @@ import com.amazon.sqs.javamessaging.message.{SQSBytesMessage, SQSTextMessage}
 import fs2.{Chunk, Stream}
 import javax.jms.{BytesMessage, TextMessage}
 
-trait decoders {
+trait decoders extends scala.AnyRef {
   implicit def strMsg[F[_]: Monad, T](
     implicit deserializer: MessageDeserializer[F, String, T]
   ) =
@@ -49,7 +49,7 @@ trait decoders {
   }
 }
 
-trait encoders {
+trait encoders extends scala.AnyRef {
   implicit def strMsg[F[_]: Monad, T](
     implicit serializer: MessageSerializer[F, T, String]
   ) =
