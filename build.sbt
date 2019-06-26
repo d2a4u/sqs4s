@@ -44,6 +44,7 @@ lazy val global = project
     name := "sqs4s",
     organization in ThisBuild := "io.sqs4s",
     scalaVersion := "2.12.8",
+    licenses += ("MIT", url("http://opensource.org/licenses/MIT")),
     settings
   )
   .aggregate(

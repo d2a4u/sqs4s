@@ -20,6 +20,9 @@ class SqsProducerSpec
     with BeforeAndAfterAll
     with Inspectors {
 
+  implicit val timer: Timer[IO] = IO.timer(global)
+  implicit val cs: ContextShift[IO] = IO.contextShift(global)
+
   var server: SQSRestServer = _
   val accessKey = "x"
   val secretKey = "x"
@@ -36,9 +39,6 @@ class SqsProducerSpec
   }
 
   trait Fixture {
-    implicit val timer: Timer[IO] = IO.timer(global)
-    implicit val cs: ContextShift[IO] = IO.contextShift(global)
-
     val client: AmazonSQSAsync =
       AmazonSQSAsyncClientBuilder
         .standard()

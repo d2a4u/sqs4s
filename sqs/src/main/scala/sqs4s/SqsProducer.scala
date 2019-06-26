@@ -64,14 +64,8 @@ abstract class SqsProducer[F[_]: Timer: Concurrent](
           req.setEntries(es.toList.asJava)
           req
         }
-        result <- Async[F].async[SendMessageBatchResult] { cb =>
-          Try(sqsClient.sendMessageBatchAsync(batchReq).get()) match {
-            case Success(value) =>
-              cb(Right(value))
-
-            case Failure(err) =>
-              cb(Left(err))
-          }
+        result <- Async[F].fromTry {
+          Try(sqsClient.sendMessageBatchAsync(batchReq).get())
         }
       } yield result
     }
