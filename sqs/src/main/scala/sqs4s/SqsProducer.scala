@@ -1,22 +1,32 @@
 package sqs4s
 
-import cats.MonadError
 import cats.effect._
 import cats.implicits._
 import com.amazonaws.services.sqs.AmazonSQSAsync
-import javax.jms._
+import com.amazonaws.services.sqs.model.{
+  SendMessageBatchRequest,
+  SendMessageBatchRequestEntry,
+  SendMessageBatchResult
+}
 import fs2._
+import javax.jms._
 import sqs4s.serialization.MessageEncoder
 
-import scala.util.Try
+import scala.util.{Failure, Success, Try}
+import scala.concurrent.duration._
+import scala.collection.JavaConverters._
 
-abstract class SqsProducer[F[_]: Sync](client: MessageProducer) {
+abstract class SqsProducer[F[_]: Timer: Concurrent](
+  client: MessageProducer,
+  sqsClient: AmazonSQSAsync) {
+
+  def queueName: String
 
   def single[T, U, M <: Message](
     msg: T
   )(implicit encoder: MessageEncoder[F, T, U, M]
   ): F[Unit] = encoder.encode(msg).flatMap { m =>
-    MonadError[F, Throwable].fromTry(Try(client.send(m)))
+    Async[F].fromTry(Try(client.send(m)))
   }
 
   def multiple[T, U, M <: Message](
@@ -26,10 +36,44 @@ abstract class SqsProducer[F[_]: Sync](client: MessageProducer) {
     msgs.evalMap { t =>
       for {
         msg <- encoder.encode(t)
-        _ <- Sync[F].suspend {
-          MonadError[F, Throwable].fromTry(Try(client.send(msg)))
-        }
+        _ <- Async[F].fromTry(Try(client.send(msg)))
       } yield ()
+    }
+
+  def batch[T, U, M <: TextMessage](
+    msgs: Stream[F, (String, T)],
+    batchSize: Int,
+    batchWithin: FiniteDuration = 5.seconds
+  )(implicit encoder: MessageEncoder[F, T, U, M]
+  ): Stream[F, SendMessageBatchResult] =
+    msgs.groupWithin(batchSize, batchWithin).evalMap { chunk =>
+      val entries = chunk.traverse {
+        case (id, msg) =>
+          encoder.encode(msg).map { m =>
+            new SendMessageBatchRequestEntry()
+              .withId(id)
+              .withMessageBody(m.getText)
+          }
+      }
+      for {
+        url <- Async[F]
+          .fromTry(Try(sqsClient.getQueueUrl(queueName).getQueueUrl()))
+        es <- entries
+        batchReq = {
+          val req = new SendMessageBatchRequest(url)
+          req.setEntries(es.toList.asJava)
+          req
+        }
+        result <- Async[F].async[SendMessageBatchResult] { cb =>
+          Try(sqsClient.sendMessageBatchAsync(batchReq).get()) match {
+            case Success(value) =>
+              cb(Right(value))
+
+            case Failure(err) =>
+              cb(Left(err))
+          }
+        }
+      } yield result
     }
 }
 
