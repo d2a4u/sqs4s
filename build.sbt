@@ -21,7 +21,10 @@ lazy val sqsDependencies = coreDependencies ++ Seq(
   "org.elasticmq" %% "elasticmq-rest-sqs" % "0.14.6" % "test"
 )
 
-lazy val settings = Seq(
+lazy val commonSettings = Seq(
+  organization in ThisBuild := "io.sqs4s",
+  scalaVersion := "2.12.8",
+  crossScalaVersions := Seq("2.11.12", "2.12.8"),
   scalacOptions ++=  Seq(
     "-unchecked",
     "-feature",
@@ -38,33 +41,27 @@ lazy val settings = Seq(
   licenses += ("MIT", url("http://opensource.org/licenses/MIT")),
   publishMavenStyle := true,
   bintrayRepository := "sqs4s",
-  addCompilerPlugin("org.typelevel" %% "kind-projector" % "0.10.0")
+  publishArtifact in Test := false,
+  pomIncludeRepository := { _ =>
+    false
+  },
+  releaseCrossBuild := true,
+  bintrayReleaseOnPublish := false,
+  addCompilerPlugin(("org.typelevel" %% "kind-projector" % "0.10.0").cross(CrossVersion.binary))
 )
-
-lazy val global = project
-  .in(file("."))
-  .settings(
-    organization in ThisBuild := "io.sqs4s",
-    scalaVersion := "2.12.8",
-    settings
-  )
-  .aggregate(
-    core,
-    sqs
-  )
 
 lazy val core = project
   .settings(
     name := "sqs4s-core",
     libraryDependencies ++= coreDependencies,
-    settings
+    commonSettings
   )
 
 lazy val sqs = project
   .settings(
     name := "sqs4s-sqs",
     libraryDependencies ++= coreDependencies ++ sqsDependencies,
-    settings
+    commonSettings
   )
   .dependsOn(
     core
