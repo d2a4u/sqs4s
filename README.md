@@ -3,8 +3,23 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Build Status](https://travis-ci.com/d2a4u/sqs4s.svg?branch=master)](https://travis-ci.com/d2a4u/sqs4s)
 [![codecov](https://codecov.io/gh/d2a4u/sqs4s/branch/master/graph/badge.svg)](https://codecov.io/gh/d2a4u/sqs4s)
+[![Download](https://api.bintray.com/packages/d2a4u/sqs4s/sqs4s-core/images/download.svg)](https://bintray.com/d2a4u/sqs4s/sqs4s-core/_latestVersion)
 
 Streaming client for AWS SQS using fs2
+
+## Install
+
+The latest version is 0.1.x. See the badge at the top of the README for the exact version number.
+
+Add the following to your `build.sbt`:
+
+```scala
+resolvers += Resolver.bintrayRepo("d2a4u", "sqs4s")
+
+// available for Scala 2.12
+libraryDependencies += "io.sqs4s" %% "sqs4s-core" % "0.1.0"
+libraryDependencies += "io.sqs4s" %% "sqs4s-sqs" % "0.1.0"
+```
 
 ## Usage
 
