@@ -1,7 +1,6 @@
 package sqs4s
 
 import cats.effect._
-import cats.implicits._
 import com.amazonaws.auth.{AWSStaticCredentialsProvider, BasicAWSCredentials}
 import com.amazonaws.client.builder.AwsClientBuilder.EndpointConfiguration
 import com.amazonaws.services.sqs.{AmazonSQSAsync, AmazonSQSAsyncClientBuilder}
@@ -9,12 +8,14 @@ import fs2._
 import javax.jms.{BytesMessage, Session, TextMessage}
 import org.elasticmq.rest.sqs.{SQSRestServer, SQSRestServerBuilder}
 import org.scalatest.{BeforeAndAfterAll, FlatSpec, Matchers}
-import sqs4s.serialization.{MessageDecoder, MessageDeserializer}
 import sqs4s.serialization.instances._
 
 import scala.concurrent.ExecutionContext.global
 
 class SqsConsumerSpec extends FlatSpec with Matchers with BeforeAndAfterAll {
+
+  implicit val timer: Timer[IO] = IO.timer(global)
+  implicit val cs: ContextShift[IO] = IO.contextShift(global)
 
   var server: SQSRestServer = _
   val accessKey = "x"
@@ -33,9 +34,6 @@ class SqsConsumerSpec extends FlatSpec with Matchers with BeforeAndAfterAll {
   }
 
   trait Fixture {
-    implicit val timer: Timer[IO] = IO.timer(global)
-    implicit val cs: ContextShift[IO] = IO.contextShift(global)
-
     val client: AmazonSQSAsync =
       AmazonSQSAsyncClientBuilder
         .standard()

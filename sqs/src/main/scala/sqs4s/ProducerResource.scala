@@ -18,7 +18,11 @@ private[sqs4s] object ProducerResource extends Connection {
       sess <- session[F](mode).apply(conn)
       queue <- queue[F](queueName).apply(sess)
       prdc <- javaProducer[F](queue).apply(sess)
-    } yield new SqsProducer[F](prdc) {}
+      qName = queueName
+    } yield
+      new SqsProducer[F](prdc, client) {
+        override val queueName: String = qName
+      }
   }
 
   private def javaProducer[F[_]: Sync](
