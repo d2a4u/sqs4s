@@ -41,10 +41,11 @@ lazy val settings = Seq(
 lazy val global = project
   .in(file("."))
   .settings(
-    name := "sqs4s",
     organization in ThisBuild := "io.sqs4s",
     scalaVersion := "2.12.8",
     licenses += ("MIT", url("http://opensource.org/licenses/MIT")),
+    publishMavenStyle := true,
+    bintrayRepository := "sqs4s",
     settings
   )
   .aggregate(
@@ -54,14 +55,14 @@ lazy val global = project
 
 lazy val core = project
   .settings(
-    name := "core",
+    name := "sqs4s-core",
     libraryDependencies ++= coreDependencies,
     settings
   )
 
 lazy val sqs = project
   .settings(
-    name := "sqs",
+    name := "sqs4s-sqs",
     libraryDependencies ++= coreDependencies ++ sqsDependencies,
     settings
   )
