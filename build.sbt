@@ -35,6 +35,9 @@ lazy val settings = Seq(
   ),
   parallelExecution in Test := false,
   scalafmtOnCompile := true,
+  licenses += ("MIT", url("http://opensource.org/licenses/MIT")),
+  publishMavenStyle := true,
+  bintrayRepository := "sqs4s",
   addCompilerPlugin("org.typelevel" %% "kind-projector" % "0.10.0")
 )
 
@@ -43,9 +46,6 @@ lazy val global = project
   .settings(
     organization in ThisBuild := "io.sqs4s",
     scalaVersion := "2.12.8",
-    licenses += ("MIT", url("http://opensource.org/licenses/MIT")),
-    publishMavenStyle := true,
-    bintrayRepository := "sqs4s",
     settings
   )
   .aggregate(
