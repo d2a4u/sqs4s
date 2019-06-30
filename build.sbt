@@ -18,7 +18,7 @@ lazy val coreDependencies = Seq(
 
 lazy val sqsDependencies = coreDependencies ++ Seq(
   "com.amazonaws" % "amazon-sqs-java-messaging-lib" % "1.0.6",
-  "org.elasticmq" %% "elasticmq-rest-sqs" % "0.14.6" % "test"
+  "org.elasticmq" %% "elasticmq-rest-sqs" % "0.14.7" % "test"
 )
 
 lazy val commonSettings = Seq(
