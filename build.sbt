@@ -2,7 +2,7 @@ import sbt.Keys.organization
 import sbt.addCompilerPlugin
 
 val circeVersion = "0.10.0"
-val fs2Version = "1.0.4"
+val fs2Version = "1.0.5"
 
 val circe = Seq(
   "io.circe" %% "circe-core",
