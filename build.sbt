@@ -1,8 +1,8 @@
 import sbt.Keys.organization
 import sbt.addCompilerPlugin
 
-val circeVersion = "0.10.0"
-val fs2Version = "1.0.4"
+val circeVersion = "0.10.1"
+val fs2Version = "1.0.5"
 
 val circe = Seq(
   "io.circe" %% "circe-core",
@@ -13,12 +13,12 @@ val circe = Seq(
 lazy val coreDependencies = Seq(
   "co.fs2" %% "fs2-core" % fs2Version,
   "javax.xml.bind" % "jaxb-api" % "2.4.0-b180830.0359",
-  "org.scalatest" %% "scalatest" % "3.0.5" % "test"
+  "org.scalatest" %% "scalatest" % "3.0.8" % "test"
 ) ++ circe
 
 lazy val sqsDependencies = coreDependencies ++ Seq(
   "com.amazonaws" % "amazon-sqs-java-messaging-lib" % "1.0.6",
-  "org.elasticmq" %% "elasticmq-rest-sqs" % "0.14.6" % "test"
+  "org.elasticmq" %% "elasticmq-rest-sqs" % "0.14.7" % "test"
 )
 
 lazy val commonSettings = Seq(
