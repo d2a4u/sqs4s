@@ -47,7 +47,7 @@ lazy val commonSettings = Seq(
   },
   releaseCrossBuild := true,
   bintrayReleaseOnPublish := false,
-  addCompilerPlugin(("org.typelevel" %% "kind-projector" % "0.10.0").cross(CrossVersion.binary))
+  addCompilerPlugin(("org.typelevel" %% "kind-projector" % "0.10.3").cross(CrossVersion.binary))
 )
 
 lazy val core = project
