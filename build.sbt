@@ -50,10 +50,11 @@ lazy val commonSettings = Seq(
   addCompilerPlugin(("org.typelevel" %% "kind-projector" % "0.10.3").cross(CrossVersion.binary))
 )
 
-lazy val root = (project in file("."))
+lazy val root = project
+  .in(file("."))
   .settings(
     name := "sqs4s",
-    publishArtifact := false,
+    noPublish,
     commonSettings
   )
   .aggregate(
@@ -62,6 +63,7 @@ lazy val root = (project in file("."))
   )
 
 lazy val core = project
+  .in(file("core"))
   .settings(
     name := "sqs4s-core",
     libraryDependencies ++= coreDependencies,
@@ -69,6 +71,7 @@ lazy val core = project
   )
 
 lazy val sqs = project
+  .in(file("sqs"))
   .settings(
     name := "sqs4s-sqs",
     libraryDependencies ++= coreDependencies ++ sqsDependencies,
@@ -77,3 +80,9 @@ lazy val sqs = project
   .dependsOn(
     core
   )
+
+lazy val noPublish = Seq(
+  publish := {},
+  publishLocal := {},
+  publishArtifact := false
+)
