@@ -92,8 +92,11 @@ abstract class SqsConsumer[
     }
     for {
       q <- Queue.bounded[F, Message](internalQueueSize)
-      listener <- Sync[F].delay[MessageListener] { msg =>
-        q.enqueue1(msg).toIO.unsafeRunAsyncAndForget()
+      listener <- Sync[F].delay[MessageListener] {
+        new MessageListener {
+          def onMessage(msg: Message): Unit =
+            q.enqueue1(msg).toIO.unsafeRunAsyncAndForget()
+        }
       }
       _ <- client.setMessageListener(listener).pure[F]
       _ <- q.dequeue.through(filter).through(callback).compile.drain.start
