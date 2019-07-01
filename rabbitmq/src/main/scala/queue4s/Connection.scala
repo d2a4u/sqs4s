@@ -1,10 +1,11 @@
 package queue4s
 
-import cats.MonadError
 import cats.effect._
-import com.rabbitmq.client.{Channel, ConnectionFactory, Connection => RmqConnection}
-
-import scala.util.Try
+import com.rabbitmq.client.{
+  Channel,
+  ConnectionFactory,
+  Connection => RmqConnection
+}
 
 private[queue4s] trait Connection {
 
@@ -12,7 +13,7 @@ private[queue4s] trait Connection {
     setting: RabbitmqSetting
   ): Resource[F, RmqConnection] =
     Resource.make[F, RmqConnection] {
-      val conn = Try {
+      Sync[F].delay {
         val factory = new ConnectionFactory()
         factory.setUsername(setting.username)
         factory.setPassword(setting.password)
@@ -21,9 +22,8 @@ private[queue4s] trait Connection {
         factory.setPort(setting.port)
         factory.newConnection()
       }
-      MonadError[F, Throwable].fromTry(conn)
     } { conn =>
-      Sync[F].defer(MonadError[F, Throwable].fromTry(Try(conn.close())))
+      Sync[F].delay(conn.close())
     }
 
   def channel[F[_]: Sync](

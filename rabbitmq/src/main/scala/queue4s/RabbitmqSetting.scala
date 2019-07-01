@@ -5,5 +5,4 @@ case class RabbitmqSetting(
   password: String,
   virtualHost: String,
   host: String,
-  port: Int
-)
+  port: Int)
