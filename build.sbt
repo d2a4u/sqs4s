@@ -50,6 +50,17 @@ lazy val commonSettings = Seq(
   addCompilerPlugin(("org.typelevel" %% "kind-projector" % "0.10.3").cross(CrossVersion.binary))
 )
 
+lazy val root = (project in file("."))
+  .settings(
+    name := "sqs4s",
+    publishArtifact := false,
+    commonSettings
+  )
+  .aggregate(
+    core,
+    sqs
+  )
+
 lazy val core = project
   .settings(
     name := "sqs4s-core",
