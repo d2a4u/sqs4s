@@ -6,5 +6,7 @@ abstract class MessageSerializer[F[_], T, U] {
 
 object MessageSerializer {
   def instance[F[_], T, U](func: T => F[U]): MessageSerializer[F, T, U] =
-    (t: T) => func(t)
+    new MessageSerializer[F, T, U] {
+      def serialize(t: T): F[U] = func(t)
+    }
 }

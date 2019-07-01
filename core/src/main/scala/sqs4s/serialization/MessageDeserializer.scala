@@ -6,5 +6,7 @@ abstract class MessageDeserializer[F[_], U, T] {
 
 object MessageDeserializer {
   def instance[F[_], U, T](func: U => F[T]): MessageDeserializer[F, U, T] =
-    (u: U) => func(u)
+    new MessageDeserializer[F, U, T] {
+      def deserialize(u: U): F[T] = func(u)
+    }
 }
