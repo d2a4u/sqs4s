@@ -2,7 +2,6 @@ package sqs4s
 
 import java.io._
 
-import cats.MonadError
 import cats.effect.{IO, Sync}
 import cats.implicits._
 import fs2._
@@ -10,15 +9,13 @@ import io.circe.generic.auto._
 import io.circe.parser._
 import io.circe.syntax._
 import javax.jms.TextMessage
+import sqs4s.serialization.instances._
 import sqs4s.serialization.{
   MessageDecoder,
   MessageDeserializer,
   MessageEncoder,
   MessageSerializer
 }
-import sqs4s.serialization.instances._
-
-import scala.util.Try
 
 @SerialVersionUID(100L)
 case class Event(
@@ -39,16 +36,12 @@ object Event {
     fs2.Stream[IO, Byte]
   ] =
     MessageSerializer.instance[IO, Event, fs2.Stream[IO, Byte]] { event =>
-      val bytesF = Sync[IO].defer {
-        MonadError[IO, Throwable].fromTry {
-          Try {
-            val stream = new ByteArrayOutputStream()
-            val oos = new ObjectOutputStream(stream)
-            oos.writeObject(event)
-            oos.close
-            stream.toByteArray()
-          }
-        }
+      val bytesF = Sync[IO].delay {
+        val stream = new ByteArrayOutputStream()
+        val oos = new ObjectOutputStream(stream)
+        oos.writeObject(event)
+        oos.close
+        stream.toByteArray()
       }
       bytesF.map { bytes =>
         Stream.chunk(Chunk.bytes(bytes))

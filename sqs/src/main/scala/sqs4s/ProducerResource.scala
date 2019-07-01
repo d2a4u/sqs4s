@@ -5,8 +5,6 @@ import cats.effect._
 import com.amazonaws.services.sqs.AmazonSQSAsync
 import javax.jms.{MessageProducer, Session}
 
-import scala.util.Try
-
 private[sqs4s] object ProducerResource extends Connection {
   def resource[F[_]: ConcurrentEffect: Timer: ContextShift](
     queueName: String,
@@ -30,9 +28,6 @@ private[sqs4s] object ProducerResource extends Connection {
   ): Session => Resource[F, MessageProducer] =
     session =>
       Resource.make[F, MessageProducer](
-        MonadError[F, Throwable]
-          .fromTry(Try(session.createProducer(queue)))
-      )(
-        pdc => Sync[F].defer(MonadError[F, Throwable].fromTry(Try(pdc.close())))
-      )
+        Sync[F].delay(session.createProducer(queue))
+      )(pdc => Sync[F].delay(pdc.close()))
 }
