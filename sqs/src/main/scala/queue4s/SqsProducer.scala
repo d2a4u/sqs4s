@@ -1,4 +1,4 @@
-package sqs4s
+package queue4s
 
 import cats.effect._
 import cats.implicits._
@@ -10,7 +10,7 @@ import com.amazonaws.services.sqs.model.{
 }
 import fs2._
 import javax.jms._
-import sqs4s.serialization.MessageEncoder
+import queue4s.serialization.MessageEncoder
 
 import scala.collection.JavaConverters._
 import scala.concurrent.duration._

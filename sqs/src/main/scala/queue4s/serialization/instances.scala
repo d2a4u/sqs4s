@@ -1,4 +1,4 @@
-package sqs4s.serialization
+package queue4s.serialization
 
 import cats.Monad
 import cats.effect.Sync

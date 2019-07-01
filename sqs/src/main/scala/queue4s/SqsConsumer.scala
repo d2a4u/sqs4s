@@ -1,4 +1,4 @@
-package sqs4s
+package queue4s
 
 import cats.MonadError
 import cats.effect._
@@ -8,7 +8,7 @@ import com.amazonaws.services.sqs.AmazonSQSAsync
 import fs2._
 import fs2.concurrent.Queue
 import javax.jms._
-import sqs4s.serialization.MessageDecoder
+import queue4s.serialization.MessageDecoder
 
 import scala.reflect.{classTag, ClassTag}
 

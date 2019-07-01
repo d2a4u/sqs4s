@@ -1,4 +1,4 @@
-package sqs4s
+package queue4s
 
 import javax.jms.Message
 

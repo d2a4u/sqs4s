@@ -16,13 +16,17 @@ lazy val coreDependencies = Seq(
   "org.scalatest" %% "scalatest" % "3.0.8" % "test"
 ) ++ circe
 
-lazy val sqsDependencies = coreDependencies ++ Seq(
+lazy val sqsDependencies = Seq(
   "com.amazonaws" % "amazon-sqs-java-messaging-lib" % "1.0.6",
   "org.elasticmq" %% "elasticmq-rest-sqs" % "0.14.7" % "test"
 )
 
+lazy val rabbitmqDependencies = Seq(
+  "com.rabbitmq" % "amqp-client" % "5.7.1"
+)
+
 lazy val commonSettings = Seq(
-  organization in ThisBuild := "io.sqs4s",
+  organization in ThisBuild := "io.queue4s",
   scalaVersion := "2.12.8",
   crossScalaVersions := Seq("2.11.12", "2.12.8"),
   scalacOptions ++=  Seq(
@@ -40,7 +44,7 @@ lazy val commonSettings = Seq(
   scalafmtOnCompile := true,
   licenses += ("MIT", url("http://opensource.org/licenses/MIT")),
   publishMavenStyle := true,
-  bintrayRepository := "sqs4s",
+  bintrayRepository := "queue4s",
   publishArtifact in Test := false,
   pomIncludeRepository := { _ =>
     false
@@ -53,19 +57,20 @@ lazy val commonSettings = Seq(
 lazy val root = project
   .in(file("."))
   .settings(
-    name := "sqs4s",
+    name := "queue4s",
     noPublish,
     commonSettings
   )
   .aggregate(
     core,
-    sqs
+    sqs,
+    rabbitmq
   )
 
 lazy val core = project
   .in(file("core"))
   .settings(
-    name := "sqs4s-core",
+    name := "queue4s-core",
     libraryDependencies ++= coreDependencies,
     commonSettings
   )
@@ -73,7 +78,7 @@ lazy val core = project
 lazy val sqs = project
   .in(file("sqs"))
   .settings(
-    name := "sqs4s-sqs",
+    name := "queue4s-sqs",
     libraryDependencies ++= coreDependencies ++ sqsDependencies,
     commonSettings
   )
@@ -86,3 +91,11 @@ lazy val noPublish = Seq(
   publishLocal := {},
   publishArtifact := false
 )
+
+lazy val rabbitmq = project
+  .in(file("rabbitmq"))
+  .settings(
+    name := "queue4s-rabbitmq",
+    libraryDependencies ++= coreDependencies ++ rabbitmqDependencies,
+    commonSettings
+  )

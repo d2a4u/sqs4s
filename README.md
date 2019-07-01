@@ -1,4 +1,4 @@
-# sqs4s
+# queue4s
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Build Status](https://travis-ci.com/d2a4u/sqs4s.svg?branch=master)](https://travis-ci.com/d2a4u/sqs4s)
@@ -17,8 +17,8 @@ Add the following to your `build.sbt`:
 resolvers += Resolver.bintrayRepo("d2a4u", "sqs4s")
 
 // available for Scala 2.12
-libraryDependencies += "io.sqs4s" %% "sqs4s-core" % "0.1.0"
-libraryDependencies += "io.sqs4s" %% "sqs4s-sqs" % "0.1.0"
+libraryDependencies += "io.queue4s" %% "queue4s-core" % "0.1.0"
+libraryDependencies += "io.queue4s" %% "queue4s-sqs" % "0.1.0"
 ```
 
 ## Usage

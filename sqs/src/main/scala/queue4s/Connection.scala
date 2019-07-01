@@ -1,11 +1,11 @@
-package sqs4s
+package queue4s
 
 import cats.effect._
 import com.amazon.sqs.javamessaging._
 import com.amazonaws.services.sqs.AmazonSQSAsync
 import javax.jms.Session
 
-private[sqs4s] trait Connection {
+private[queue4s] trait Connection {
 
   def connection[F[_]: Sync](
     client: AmazonSQSAsync

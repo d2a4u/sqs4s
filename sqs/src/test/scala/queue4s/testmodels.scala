@@ -1,4 +1,4 @@
-package sqs4s
+package queue4s
 
 import java.io._
 
@@ -9,13 +9,8 @@ import io.circe.generic.auto._
 import io.circe.parser._
 import io.circe.syntax._
 import javax.jms.TextMessage
-import sqs4s.serialization.instances._
-import sqs4s.serialization.{
-  MessageDecoder,
-  MessageDeserializer,
-  MessageEncoder,
-  MessageSerializer
-}
+import queue4s.serialization._
+import queue4s.serialization.instances._
 
 @SerialVersionUID(100L)
 case class Event(

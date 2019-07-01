@@ -1,4 +1,4 @@
-package sqs4s
+package queue4s
 
 import cats.effect._
 import com.amazonaws.auth.{AWSStaticCredentialsProvider, BasicAWSCredentials}
@@ -8,7 +8,7 @@ import fs2._
 import javax.jms.{BytesMessage, Session, TextMessage}
 import org.elasticmq.rest.sqs.{SQSRestServer, SQSRestServerBuilder}
 import org.scalatest.{BeforeAndAfterAll, FlatSpec, Matchers}
-import sqs4s.serialization.instances._
+import queue4s.serialization.instances._
 
 import scala.concurrent.ExecutionContext.global
 

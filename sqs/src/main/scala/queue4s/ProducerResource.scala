@@ -1,11 +1,12 @@
-package sqs4s
+package queue4s
 
 import cats.MonadError
 import cats.effect._
 import com.amazonaws.services.sqs.AmazonSQSAsync
 import javax.jms.{MessageProducer, Session}
 
-private[sqs4s] object ProducerResource extends Connection {
+private[queue4s] object ProducerResource extends Connection {
+
   def resource[F[_]: ConcurrentEffect: Timer: ContextShift](
     queueName: String,
     mode: Int,

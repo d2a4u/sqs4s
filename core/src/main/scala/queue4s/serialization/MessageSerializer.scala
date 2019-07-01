@@ -1,4 +1,4 @@
-package sqs4s.serialization
+package queue4s.serialization
 
 abstract class MessageSerializer[F[_], T, U] {
   def serialize(t: T): F[U]

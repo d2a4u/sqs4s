@@ -1,12 +1,13 @@
-package sqs4s
+package queue4s
 
 import cats.effect._
 import com.amazonaws.services.sqs.AmazonSQSAsync
 import fs2.Stream
 import javax.jms._
-import sqs4s.serialization.MessageDecoder
+import queue4s.serialization.MessageDecoder
 
-private[sqs4s] object ConsumerResource extends Connection {
+private[queue4s] object ConsumerResource extends Connection {
+
   def resourceBytes[F[_]: ConcurrentEffect: Timer: ContextShift, T](
     queueName: String,
     mode: Int,
