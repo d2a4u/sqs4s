@@ -12,9 +12,8 @@ import fs2._
 import javax.jms._
 import sqs4s.serialization.MessageEncoder
 
-import scala.util.{Failure, Success, Try}
-import scala.concurrent.duration._
 import scala.collection.JavaConverters._
+import scala.concurrent.duration._
 
 abstract class SqsProducer[F[_]: Timer: Concurrent](
   client: MessageProducer,
@@ -26,7 +25,7 @@ abstract class SqsProducer[F[_]: Timer: Concurrent](
     msg: T
   )(implicit encoder: MessageEncoder[F, T, U, M]
   ): F[Unit] = encoder.encode(msg).flatMap { m =>
-    Async[F].fromTry(Try(client.send(m)))
+    Async[F].delay(client.send(m))
   }
 
   def multiple[T, U, M <: Message](
@@ -36,7 +35,7 @@ abstract class SqsProducer[F[_]: Timer: Concurrent](
     msgs.evalMap { t =>
       for {
         msg <- encoder.encode(t)
-        _ <- Async[F].fromTry(Try(client.send(msg)))
+        _ <- Async[F].delay(client.send(msg))
       } yield ()
     }
 
@@ -56,17 +55,15 @@ abstract class SqsProducer[F[_]: Timer: Concurrent](
           }
       }
       for {
-        url <- Async[F]
-          .fromTry(Try(sqsClient.getQueueUrl(queueName).getQueueUrl()))
+        url <- Async[F].delay(sqsClient.getQueueUrl(queueName).getQueueUrl())
         es <- entries
         batchReq = {
           val req = new SendMessageBatchRequest(url)
           req.setEntries(es.toList.asJava)
           req
         }
-        result <- Async[F].fromTry {
-          Try(sqsClient.sendMessageBatchAsync(batchReq).get())
-        }
+        result <- Async[F]
+          .delay(sqsClient.sendMessageBatchAsync(batchReq).get())
       } yield result
     }
 }

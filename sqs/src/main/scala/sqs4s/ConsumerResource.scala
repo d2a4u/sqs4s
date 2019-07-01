@@ -1,13 +1,10 @@
 package sqs4s
 
-import cats.MonadError
 import cats.effect._
 import com.amazonaws.services.sqs.AmazonSQSAsync
 import fs2.Stream
 import javax.jms._
 import sqs4s.serialization.MessageDecoder
-
-import scala.util.Try
 
 private[sqs4s] object ConsumerResource extends Connection {
   def resourceBytes[F[_]: ConcurrentEffect: Timer: ContextShift, T](
@@ -55,10 +52,7 @@ private[sqs4s] object ConsumerResource extends Connection {
       queue <- queue[F](queueName).apply(sess)
       _ <- Resource.liftF(Sync[F].delay(conn.start()))
       csm <- Resource.make[F, MessageConsumer](
-        MonadError[F, Throwable]
-          .fromTry(Try(sess.createConsumer(queue)))
-      )(
-        csm => Sync[F].defer(MonadError[F, Throwable].fromTry(Try(csm.close())))
-      )
+        Sync[F].delay(sess.createConsumer(queue))
+      )(csm => Sync[F].delay(csm.close()))
     } yield csm
 }
