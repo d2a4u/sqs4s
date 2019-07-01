@@ -84,4 +84,8 @@ trait encoders extends scala.AnyRef {
 
 trait instances extends decoders with encoders {}
 
+object decoders extends decoders
+
+object encoders extends encoders
+
 object instances extends instances
