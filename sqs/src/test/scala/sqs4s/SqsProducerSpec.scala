@@ -101,11 +101,11 @@ class SqsProducerSpec
         _.batch[Event, String, TextMessage](
           Stream.fromIterator[IO, (String, Event)](events.toIterator),
           3,
-          5.seconds
+          60.seconds
         ).compile.toList
       )
       .unsafeRunSync()
-    val expect = (0 to 9).map(_.toString)
+    val expect = (0 to 9).map(_.toString).grouped(3).map(_.last).toList
     val sentIds = results.flatMap(_.getSuccessful.asScala.map(_.getId))
     sentIds should contain theSameElementsAs expect
   }

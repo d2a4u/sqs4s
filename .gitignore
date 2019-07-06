@@ -15,7 +15,6 @@ project/boot/
 project/plugins/project/
 
 #sbt-plugins specific
-dynamodb-local/
 
 # Scala-IDE specific
 .scala_dependencies
@@ -26,6 +25,7 @@ project/target
 
 # IntelliJ
 /out/
+*.iml
 
 # vim
 *.swp
@@ -34,4 +34,3 @@ project/target
 # Mac
 .DS_Store
 
-src/universal/aiven_certs/*
