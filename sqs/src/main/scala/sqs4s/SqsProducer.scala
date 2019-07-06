@@ -25,7 +25,7 @@ abstract class SqsProducer[F[_]: Timer: Concurrent](
     msg: T
   )(implicit encoder: MessageEncoder[F, T, U, M]
   ): F[Unit] = encoder.encode(msg).flatMap { m =>
-    Async[F].delay(client.send(m))
+    Sync[F].delay(client.send(m))
   }
 
   def multiple[T, U, M <: Message](
@@ -35,7 +35,7 @@ abstract class SqsProducer[F[_]: Timer: Concurrent](
     msgs.evalMap { t =>
       for {
         msg <- encoder.encode(t)
-        _ <- Async[F].delay(client.send(msg))
+        _ <- Sync[F].delay(client.send(msg))
       } yield ()
     }
 
@@ -44,28 +44,30 @@ abstract class SqsProducer[F[_]: Timer: Concurrent](
     batchSize: Int,
     batchWithin: FiniteDuration = 5.seconds
   )(implicit encoder: MessageEncoder[F, T, U, M]
-  ): Stream[F, SendMessageBatchResult] =
-    msgs.groupWithin(batchSize, batchWithin).evalMap { chunk =>
-      val entries = chunk.traverse {
-        case (id, msg) =>
-          encoder.encode(msg).map { m =>
-            new SendMessageBatchRequestEntry()
-              .withId(id)
-              .withMessageBody(m.getText)
-          }
-      }
-      for {
-        url <- Async[F].delay(sqsClient.getQueueUrl(queueName).getQueueUrl())
-        es <- entries
-        batchReq = {
-          val req = new SendMessageBatchRequest(url)
-          req.setEntries(es.toList.asJava)
-          req
+  ): Stream[F, SendMessageBatchResult] = {
+    def buildRequest(url: String): Stream[F, SendMessageBatchRequest] =
+      msgs.groupWithin(batchSize, batchWithin).evalMap { chunk =>
+        chunk.foldLeft(new SendMessageBatchRequest(url).pure[F]) {
+          case (req, (id, msg)) =>
+            encoder.encode(msg).flatMap { m =>
+              val entry = new SendMessageBatchRequestEntry()
+                .withId(id)
+                .withMessageBody(m.getText)
+              req.map { r =>
+                r.setEntries(List(entry).asJava)
+                r
+              }
+            }
         }
-        result <- Async[F]
-          .delay(sqsClient.sendMessageBatchAsync(batchReq).get())
-      } yield result
-    }
+      }
+    for {
+      url <- Stream.eval(
+        Sync[F].delay(sqsClient.getQueueUrl(queueName).getQueueUrl())
+      )
+      req <- buildRequest(url)
+      res <- Stream.eval(Sync[F].delay(sqsClient.sendMessageBatch(req)))
+    } yield res
+  }
 }
 
 object SqsProducer {

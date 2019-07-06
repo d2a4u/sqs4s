@@ -16,9 +16,9 @@ Add the following to your `build.sbt`:
 ```scala
 resolvers += Resolver.bintrayRepo("d2a4u", "sqs4s")
 
-// available for Scala 2.12
-libraryDependencies += "io.sqs4s" %% "sqs4s-core" % "0.1.0"
-libraryDependencies += "io.sqs4s" %% "sqs4s-sqs" % "0.1.0"
+// available for Scala 2.11 and 2.12
+libraryDependencies += "io.sqs4s" %% "sqs4s-core" % "LATEST_VERSION"
+libraryDependencies += "io.sqs4s" %% "sqs4s-sqs" % "LATEST_VERSION"
 ```
 
 ## Usage
@@ -102,6 +102,30 @@ And to start consuming messages as stream:
 
 ```scala 
 consumerSrc.use(_.consume().flatMap(_.take(1).compile.toList))
+```
+
+## Benchmark
+
+To run benchmark, in `sbt` console, run:
+
+```scala
+project benchmark
+jmh:run -i 20 -wi 10 -f1 -t1
+```
+
+For example, the results below are from running benchmark locally on my machine.
+
+### Producer
+```
+Benchmark                   (numberOfEvents)   Mode  Cnt    Score    Error  Units
+ProducerBenchmark.batch                    1  thrpt   20  190.623 ±  9.185  ops/s
+ProducerBenchmark.batch                   10  thrpt   20  156.782 ±  9.454  ops/s
+ProducerBenchmark.batch                  100  thrpt   20   80.920 ±  2.230  ops/s
+ProducerBenchmark.batch                 1000  thrpt   20   11.536 ±  0.056  ops/s
+ProducerBenchmark.multiple                 1  thrpt   20  221.551 ± 12.533  ops/s
+ProducerBenchmark.multiple                10  thrpt   20  119.252 ± 16.934  ops/s
+ProducerBenchmark.multiple               100  thrpt   20   22.151 ±  0.248  ops/s
+ProducerBenchmark.multiple              1000  thrpt   20    2.354 ±  0.032  ops/s
 ```
 
 ## License

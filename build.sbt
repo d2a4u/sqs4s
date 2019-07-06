@@ -16,9 +16,15 @@ lazy val coreDependencies = Seq(
   "org.scalatest" %% "scalatest" % "3.0.8" % "test"
 ) ++ circe
 
-lazy val sqsDependencies = coreDependencies ++ Seq(
+lazy val sqsDependencies = Seq(
   "com.amazonaws" % "amazon-sqs-java-messaging-lib" % "1.0.6",
   "org.elasticmq" %% "elasticmq-rest-sqs" % "0.14.7" % "test"
+)
+
+lazy val benchmarkDependencies = Seq(
+  "com.danielasfregola" %% "random-data-generator" % "2.7" % "test",
+  "org.slf4j" % "log4j-over-slf4j" % "1.7.26" % "test",
+  "log4j" % "log4j" % "1.2.17" % "test"
 )
 
 lazy val commonSettings = Seq(
@@ -50,18 +56,6 @@ lazy val commonSettings = Seq(
   addCompilerPlugin(("org.typelevel" %% "kind-projector" % "0.10.3").cross(CrossVersion.binary))
 )
 
-lazy val root = project
-  .in(file("."))
-  .settings(
-    name := "sqs4s",
-    noPublish,
-    commonSettings
-  )
-  .aggregate(
-    core,
-    sqs
-  )
-
 lazy val core = project
   .in(file("core"))
   .settings(
@@ -79,6 +73,39 @@ lazy val sqs = project
   )
   .dependsOn(
     core
+  )
+
+lazy val benchmark = project
+  .in(file("benchmark"))
+  .enablePlugins(JmhPlugin)
+  .settings(
+    name := "sqs4s-benchmark",
+    libraryDependencies ++= coreDependencies ++ sqsDependencies ++ benchmarkDependencies,
+    noPublish,
+    commonSettings,
+    sourceDirectory in Jmh := (sourceDirectory in Test).value,
+    classDirectory in Jmh := (classDirectory in Test).value,
+    dependencyClasspath in Jmh := (dependencyClasspath in Test).value,
+    compile in Jmh := (compile in Jmh).dependsOn(compile in Test).value,
+    run in Jmh := (run in Jmh).dependsOn(Keys.compile in Jmh).evaluated
+  )
+  .dependsOn(
+    core,
+    sqs % "test->test"
+  )
+
+lazy val root = project
+  .in(file("."))
+  .enablePlugins(JmhPlugin)
+  .settings(
+    name := "sqs4s",
+    noPublish,
+    commonSettings
+  )
+  .aggregate(
+    core,
+    sqs,
+    benchmark
   )
 
 lazy val noPublish = Seq(
