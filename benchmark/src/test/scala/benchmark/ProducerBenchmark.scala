@@ -1,7 +1,5 @@
 package benchmark
 
-import java.util.concurrent.TimeUnit
-
 import cats.effect.{ContextShift, IO, Resource, Timer}
 import com.amazonaws.auth.{AWSStaticCredentialsProvider, BasicAWSCredentials}
 import com.amazonaws.client.builder.AwsClientBuilder.EndpointConfiguration
@@ -24,7 +22,7 @@ class ProducerBenchmark {
   var server: SQSRestServer = _
   val accessKey = "x"
   val secretKey = "x"
-  val testQueueName = "test-queue-void"
+  val testQueueName = "producer-bm-queue"
 
   def setup(): Resource[IO, SqsProducer[IO]] = {
     val client: AmazonSQSAsync =
@@ -55,6 +53,13 @@ class ProducerBenchmark {
   @Param(Array("1", "10", "100", "1000"))
   var numberOfEvents: Int = 0
 
+  def batchSize(numberOfEvents: Int): Int =
+    numberOfEvents match {
+      case 1 => 1
+      case 10 => 10
+      case _ => 20
+    }
+
   @Benchmark
   def multiple(): Unit = {
     setup()
@@ -75,7 +80,7 @@ class ProducerBenchmark {
           fs2.Stream.fromIterator[IO, (String, Event)](
             random[(String, Event)](numberOfEvents).toIterator
           ),
-          20,
+          batchSize(numberOfEvents),
           5.seconds
         ).compile.drain
       )

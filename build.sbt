@@ -18,11 +18,11 @@ lazy val coreDependencies = Seq(
 
 lazy val sqsDependencies = Seq(
   "com.amazonaws" % "amazon-sqs-java-messaging-lib" % "1.0.6",
+  "com.danielasfregola" %% "random-data-generator" % "2.7" % "test",
   "org.elasticmq" %% "elasticmq-rest-sqs" % "0.14.7" % "test"
 )
 
 lazy val benchmarkDependencies = Seq(
-  "com.danielasfregola" %% "random-data-generator" % "2.7" % "test",
   "org.slf4j" % "log4j-over-slf4j" % "1.7.26" % "test",
   "log4j" % "log4j" % "1.2.17" % "test"
 )

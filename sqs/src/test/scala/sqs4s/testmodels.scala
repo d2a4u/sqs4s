@@ -19,7 +19,7 @@ import sqs4s.serialization.{
 
 @SerialVersionUID(100L)
 case class Event(
-  id: Int,
+  id: String,
   name: String)
     extends Serializable
 
