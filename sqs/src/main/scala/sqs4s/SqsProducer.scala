@@ -76,7 +76,7 @@ abstract class SqsProducer[F[_]: Timer: Concurrent](
   ): Stream[F, SendMessageBatchRequest] =
     msgs.groupWithin(batchSize, batchWithin).evalMap { chunk =>
       chunk
-        .traverse(toEntry)
+        .traverse(toEntry[T, U, M])
         .map { entries =>
           new SendMessageBatchRequest(url)
             .withEntries(entries.toList.asJava)
