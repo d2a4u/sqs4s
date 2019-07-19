@@ -86,12 +86,14 @@ abstract class SqsProducer[F[_]: Timer: Concurrent](
   private def toEntry[T, U, M <: TextMessage](
     msg: (String, T)
   )(implicit encoder: MessageEncoder[F, T, U, M]
-  ): F[SendMessageBatchRequestEntry] =
-    encoder.encode(msg._2).map { m =>
+  ): F[SendMessageBatchRequestEntry] = {
+    val (id, body) = msg
+    encoder.encode(body).map { m =>
       new SendMessageBatchRequestEntry()
-        .withId(msg._1)
+        .withId(id)
         .withMessageBody(m.getText)
     }
+  }
 }
 
 object SqsProducer {

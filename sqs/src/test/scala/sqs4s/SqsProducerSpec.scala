@@ -24,7 +24,7 @@ class SqsProducerSpec
   implicit val timer: Timer[IO] = IO.timer(global)
   implicit val cs: ContextShift[IO] = IO.contextShift(global)
 
-  var server: SQSRestServer = _
+  private var server: SQSRestServer = _
   val accessKey = "x"
   val secretKey = "x"
   val testQueueName = "test-queue-void"
@@ -122,8 +122,14 @@ class SqsProducerSpec
       )
       .unsafeRunSync()
     val sentIds =
-      results.flatMap(_.right.get.getSuccessful.asScala.map(_.getId))
-    sentIds should contain theSameElementsAs events.map(_._1)
+      results.collect {
+        case Right(result) =>
+          result.getSuccessful.asScala.toList.map(_.getId)
+      }.flatten
+    val expectIds = events.map {
+      case (id, _) => id
+    }
+    sentIds should contain theSameElementsAs expectIds
   }
 
   it should "capture error to Left when attempt sending message in batch" in new Fixture {
