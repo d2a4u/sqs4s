@@ -4,6 +4,7 @@ import cats.effect._
 import com.amazonaws.auth.{AWSStaticCredentialsProvider, BasicAWSCredentials}
 import com.amazonaws.client.builder.AwsClientBuilder.EndpointConfiguration
 import com.amazonaws.services.sqs.{AmazonSQSAsync, AmazonSQSAsyncClientBuilder}
+import com.danielasfregola.randomdatagenerator.RandomDataGenerator._
 import fs2._
 import javax.jms.{BytesMessage, Session, TextMessage}
 import org.elasticmq.rest.sqs.{SQSRestServer, SQSRestServerBuilder}
@@ -50,7 +51,7 @@ class SqsConsumerSpec extends FlatSpec with Matchers with BeforeAndAfterAll {
 
   "SqsConsumer" should "consume text message" in new Fixture {
     client.createQueue(txtQueueName)
-    val event = Event(1, "test")
+    val event = random[Event]
     val producerStrSrc =
       SqsProducer
         .resource[IO](txtQueueName, Session.AUTO_ACKNOWLEDGE, client)
@@ -70,7 +71,7 @@ class SqsConsumerSpec extends FlatSpec with Matchers with BeforeAndAfterAll {
 
   it should "consume binary message" in new Fixture {
     client.createQueue(binQueueName)
-    val event = Event(1, "test")
+    val event = random[Event]
     val producerBinSrc =
       SqsProducer
         .resource[IO](binQueueName, Session.AUTO_ACKNOWLEDGE, client)
@@ -93,9 +94,7 @@ class SqsConsumerSpec extends FlatSpec with Matchers with BeforeAndAfterAll {
 
   it should "manually acknowledge message" in new Fixture {
     client.createQueue(txtQueueName)
-    val events = Stream.fromIterator[IO, Event](
-      (0 to 9).map(i => Event(i, "test")).toIterator
-    )
+    val events = Stream.fromIterator[IO, Event](random[Event](10).toIterator)
     val producerStrSrc =
       SqsProducer
         .resource[IO](txtQueueName, Session.AUTO_ACKNOWLEDGE, client)

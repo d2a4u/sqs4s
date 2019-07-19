@@ -4,6 +4,7 @@ import cats.effect._
 import com.amazonaws.auth.{AWSStaticCredentialsProvider, BasicAWSCredentials}
 import com.amazonaws.client.builder.AwsClientBuilder.EndpointConfiguration
 import com.amazonaws.services.sqs.{AmazonSQSAsync, AmazonSQSAsyncClientBuilder}
+import com.danielasfregola.randomdatagenerator.RandomDataGenerator._
 import fs2._
 import javax.jms.{BytesMessage, Session, TextMessage}
 import org.elasticmq.rest.sqs.{SQSRestServer, SQSRestServerBuilder}
@@ -60,18 +61,18 @@ class SqsProducerSpec
 
   "SqsProducer" should "produce single text message" in new Fixture {
     producer
-      .use(_.single[Event, String, TextMessage](Event(1, "test")))
+      .use(_.single[Event, String, TextMessage](random[Event]))
       .unsafeRunSync() shouldEqual {}
   }
 
   it should "produce single binary message" in new Fixture {
     producer
-      .use(_.single[Event, Stream[IO, Byte], BytesMessage](Event(1, "test")))
+      .use(_.single[Event, Stream[IO, Byte], BytesMessage](random[Event]))
       .unsafeRunSync() shouldEqual {}
   }
 
   it should "produce multiple text messages" in new Fixture {
-    val events = (0 to 9).map(i => Event(i, "test")).toIterator
+    val events = random[Event](10).toIterator
     producer
       .use(
         _.multiple[Event, String, TextMessage](
@@ -83,7 +84,7 @@ class SqsProducerSpec
   }
 
   it should "produce multiple binary messages" in new Fixture {
-    val events = (0 to 9).map(i => Event(i, "test")).toIterator
+    val events = random[Event](10).toIterator
     producer
       .use(
         _.multiple[Event, Stream[IO, Byte], BytesMessage](
@@ -95,18 +96,51 @@ class SqsProducerSpec
   }
 
   it should "send messages in batch" in new Fixture {
-    val events = (0 to 9).map(i => (i.toString, Event(i, "test"))).toList
+    val events = random[Event](10).map(event => (event.id, event))
     val results = producer
       .use(
         _.batch[Event, String, TextMessage](
           Stream.fromIterator[IO, (String, Event)](events.toIterator),
           3,
-          60.seconds
+          5.seconds
         ).compile.toList
       )
       .unsafeRunSync()
-    val expect = (0 to 9).map(_.toString).grouped(3).map(_.last).toList
     val sentIds = results.flatMap(_.getSuccessful.asScala.map(_.getId))
-    sentIds should contain theSameElementsAs expect
+    sentIds should contain theSameElementsAs events.map(_._1)
+  }
+
+  it should "attempt to send messages in batch" in new Fixture {
+    val events = random[Event](10).map(event => (event.id, event))
+    val results = producer
+      .use(
+        _.attemptBatch[Event, String, TextMessage](
+          Stream.fromIterator[IO, (String, Event)](events.toIterator),
+          3,
+          5.seconds
+        ).compile.toList
+      )
+      .unsafeRunSync()
+    val sentIds =
+      results.flatMap(_.right.get.getSuccessful.asScala.map(_.getId))
+    sentIds should contain theSameElementsAs events.map(_._1)
+  }
+
+  it should "capture error to Left when attempt sending message in batch" in new Fixture {
+    // when sending batch, each entry should have unique ID,
+    // here, all events have the same ID, it should fail
+    val event = random[Event]
+    val erroneous = Stream.fromIterator[IO, (String, Event)](
+      List.fill(10)(event).map(e => (e.id, e)).toIterator
+    )
+    val results = producer
+      .use(
+        _.attemptBatch[Event, String, TextMessage](erroneous, 2, 5.seconds).compile.toList
+      )
+      .unsafeRunSync()
+    forAll(results) {
+      case Left(_) => succeed
+      case Right(_) => fail()
+    }
   }
 }

@@ -63,7 +63,7 @@ abstract class SqsConsumer[
     * @return a Pipe (function to call Java method acknowledge() on a message within F context
     */
   def ack(): Pipe[F, M, Unit] =
-    msgs => msgs.evalMap(m => Sync[F].delay(m.acknowledge()))
+    _.evalMap(m => Sync[F].delay(m.acknowledge()))
 
   /**
     * Consume SQS messages as a stream, but does not acknowledge the message,
