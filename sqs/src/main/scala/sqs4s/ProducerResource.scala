@@ -22,9 +22,8 @@ private[sqs4s] object ProducerResource extends Connection {
     }
   }
 
-  private def javaProducer[F[_]: Sync](
+  private def javaProducer[F[_]: Sync: MonadError[?[_], Throwable]](
     queue: javax.jms.Queue
-  )(implicit M: MonadError[F, Throwable]
   ): Session => Resource[F, MessageProducer] =
     session =>
       Resource.make[F, MessageProducer](

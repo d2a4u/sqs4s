@@ -3,6 +3,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Build Status](https://travis-ci.com/d2a4u/sqs4s.svg?branch=master)](https://travis-ci.com/d2a4u/sqs4s)
 [![codecov](https://codecov.io/gh/d2a4u/sqs4s/branch/master/graph/badge.svg)](https://codecov.io/gh/d2a4u/sqs4s)
+[![Codacy Badge](https://api.codacy.com/project/badge/Grade/8a331de033cb4700acddb175af4148bb)](https://www.codacy.com/app/d2a4u/sqs4s?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=d2a4u/sqs4s&amp;utm_campaign=Badge_Grade)
 [![Download](https://api.bintray.com/packages/d2a4u/sqs4s/sqs4s-core/images/download.svg)](https://bintray.com/d2a4u/sqs4s/sqs4s-core/_latestVersion)
 
 Streaming client for AWS SQS using fs2
@@ -116,7 +117,7 @@ jmh:run -i 20 -wi 10 -f1 -t1
 For example, the results below are from running benchmark locally on my machine.
 
 ### Producer
-```
+```text
 Benchmark                   (numberOfEvents)   Mode  Cnt    Score    Error  Units
 ProducerBenchmark.batch                    1  thrpt   20  190.623 ±  9.185  ops/s
 ProducerBenchmark.batch                   10  thrpt   20  156.782 ±  9.454  ops/s

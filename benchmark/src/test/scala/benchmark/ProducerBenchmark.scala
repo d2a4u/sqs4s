@@ -19,7 +19,7 @@ class ProducerBenchmark {
   implicit val timer: Timer[IO] = IO.timer(global)
   implicit val cs: ContextShift[IO] = IO.contextShift(global)
 
-  var server: SQSRestServer = _
+  private var server: SQSRestServer = _
   val accessKey = "x"
   val secretKey = "x"
   val testQueueName = "producer-bm-queue"
@@ -51,7 +51,7 @@ class ProducerBenchmark {
     server.stopAndWait()
 
   @Param(Array("1", "10", "100", "1000"))
-  var numberOfEvents: Int = 0
+  private var numberOfEvents: Int = 0
 
   def batchSize(numberOfEvents: Int): Int =
     numberOfEvents match {
