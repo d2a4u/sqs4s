@@ -1,7 +1,5 @@
 package sqs4s
 
-import java.util.UUID
-
 import cats.effect._
 import com.amazonaws.auth.{AWSStaticCredentialsProvider, BasicAWSCredentials}
 import com.amazonaws.client.builder.AwsClientBuilder.EndpointConfiguration
@@ -110,5 +108,39 @@ class SqsProducerSpec
       .unsafeRunSync()
     val sentIds = results.flatMap(_.getSuccessful.asScala.map(_.getId))
     sentIds should contain theSameElementsAs events.map(_._1)
+  }
+
+  it should "attempt to send messages in batch" in new Fixture {
+    val events = random[Event](10).map(event => (event.id, event))
+    val results = producer
+      .use(
+        _.attemptBatch[Event, String, TextMessage](
+          Stream.fromIterator[IO, (String, Event)](events.toIterator),
+          3,
+          5.seconds
+        ).compile.toList
+      )
+      .unsafeRunSync()
+    val sentIds =
+      results.flatMap(_.right.get.getSuccessful.asScala.map(_.getId))
+    sentIds should contain theSameElementsAs events.map(_._1)
+  }
+
+  it should "capture error to Left when attempt sending message in batch" in new Fixture {
+    // when sending batch, each entry should have unique ID,
+    // here, all events have the same ID, it should fail
+    val event = random[Event]
+    val erroneous = Stream.fromIterator[IO, (String, Event)](
+      List.fill(10)(event).map(e => (e.id, e)).toIterator
+    )
+    val results = producer
+      .use(
+        _.attemptBatch[Event, String, TextMessage](erroneous, 2, 5.seconds).compile.toList
+      )
+      .unsafeRunSync()
+    forAll(results) {
+      case Left(_) => succeed
+      case Right(_) => fail()
+    }
   }
 }
