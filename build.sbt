@@ -3,6 +3,7 @@ import sbt.addCompilerPlugin
 
 val circeVersion = "0.11.2"
 val fs2Version = "1.0.5"
+val http4sVersion = "0.20.6"
 
 val circe = Seq(
   "io.circe" %% "circe-core",
@@ -20,6 +21,11 @@ lazy val sqsDependencies = Seq(
   "com.amazonaws" % "amazon-sqs-java-messaging-lib" % "1.0.8",
   "com.danielasfregola" %% "random-data-generator" % "2.7" % "test",
   "org.elasticmq" %% "elasticmq-rest-sqs" % "0.14.15" % "test"
+) ++ circe
+
+lazy val nativeDependencies = Seq(
+  "org.http4s" %% "http4s-blaze-client" % http4sVersion,
+  "org.http4s" %% "http4s-scala-xml" % http4sVersion
 )
 
 lazy val benchmarkDependencies = Seq(
@@ -58,6 +64,17 @@ lazy val sqs = project
   .settings(
     name := "sqs4s-sqs",
     libraryDependencies ++= coreDependencies ++ sqsDependencies,
+    commonSettings
+  )
+  .dependsOn(
+    core
+  )
+
+lazy val native = project
+  .in(file("native"))
+  .settings(
+    name := "sqs4s-native",
+    libraryDependencies ++= coreDependencies ++ nativeDependencies,
     commonSettings
   )
   .dependsOn(
