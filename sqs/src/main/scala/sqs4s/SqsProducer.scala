@@ -71,7 +71,7 @@ abstract class SqsProducer[F[_]: Timer: Concurrent](
     url: String,
     msgs: Stream[F, (String, T)],
     batchSize: Int,
-    batchWithin: FiniteDuration = 5.seconds
+    batchWithin: FiniteDuration
   )(implicit encoder: MessageEncoder[F, T, U, M]
   ): Stream[F, SendMessageBatchRequest] =
     msgs.groupWithin(batchSize, batchWithin).evalMap { chunk =>

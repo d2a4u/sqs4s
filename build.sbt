@@ -31,17 +31,6 @@ lazy val commonSettings = Seq(
   organization in ThisBuild := "io.sqs4s",
   scalaVersion := "2.12.8",
   crossScalaVersions := Seq("2.11.12", "2.12.8"),
-  scalacOptions ++=  Seq(
-    "-unchecked",
-    "-feature",
-    "-language:existentials",
-    "-language:higherKinds",
-    "-language:implicitConversions",
-    "-language:postfixOps",
-    "-deprecation",
-    "-encoding",
-    "utf8"
-  ),
   parallelExecution in Test := false,
   scalafmtOnCompile := true,
   licenses += ("MIT", url("http://opensource.org/licenses/MIT")),

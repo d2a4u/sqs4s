@@ -17,8 +17,7 @@ abstract class SqsConsumer[
   M <: Message: ClassTag,
   U,
   T
-](queueName: String,
-  acknowledgeMode: Int,
+](acknowledgeMode: Int,
   internalQueueSize: Int,
   client: MessageConsumer
 )(implicit decoder: MessageDecoder[F, M, U, T]) {

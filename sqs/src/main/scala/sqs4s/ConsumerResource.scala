@@ -14,9 +14,8 @@ private[sqs4s] object ConsumerResource extends Connection {
     client: AmazonSQSAsync
   )(implicit decoder: MessageDecoder[F, BytesMessage, Stream[F, Byte], T]
   ): Resource[F, SqsConsumer[F, BytesMessage, Stream[F, Byte], T]] =
-    javaConsumer[F](queueName, mode, internalQueueSize, client).map { csm =>
+    javaConsumer[F](queueName, mode, client).map { csm =>
       new SqsConsumer[F, BytesMessage, Stream[F, Byte], T](
-        queueName,
         mode,
         internalQueueSize,
         csm
@@ -30,20 +29,17 @@ private[sqs4s] object ConsumerResource extends Connection {
     client: AmazonSQSAsync
   )(implicit decoder: MessageDecoder[F, TextMessage, String, T]
   ): Resource[F, SqsConsumer[F, TextMessage, String, T]] =
-    javaConsumer[F](queueName, acknowledgeMode, internalQueueSize, client).map {
-      csm =>
-        new SqsConsumer[F, TextMessage, String, T](
-          queueName,
-          acknowledgeMode,
-          internalQueueSize,
-          csm
-        ) {}
+    javaConsumer[F](queueName, acknowledgeMode, client).map { csm =>
+      new SqsConsumer[F, TextMessage, String, T](
+        acknowledgeMode,
+        internalQueueSize,
+        csm
+      ) {}
     }
 
   private def javaConsumer[F[_]: Sync](
     queueName: String,
     acknowledgeMode: Int,
-    internalQueueSize: Int = 20,
     client: AmazonSQSAsync
   ): Resource[F, MessageConsumer] =
     for {
