@@ -95,13 +95,20 @@ object Signer {
     } yield base16(sha)
   }
 
-  def canonicalRequest(method: Method, uri: String, params: List[(String, String)]) =
+  def canonicalRequest(
+    method: Method,
+    uri: String,
+    params: List[(String, String)],
+    headers: String,
+    signedHeaders: String,
+    payload: String
+  ) =
     method + NewLine +
       uri + NewLine +
       urlEncoded(params) + NewLine +
-      headersString + NewLine +
-      signedHeaderKeys + NewLine +
-      base16(hash(payload.getOrElse(EmptyString.getBytes(StandardCharsets.UTF_8))))
+      headers + NewLine +
+      signedHeaders + NewLine +
+      base16(hmacSHA256(payload.getOrElse(EmptyString.getBytes(StandardCharsets.UTF_8))))
 
   val baseUri = Uri.uri("http://foo.com")
   // baseUri: org.http4s.Uri = http://foo.com
