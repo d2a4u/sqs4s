@@ -47,8 +47,10 @@ class ProducerBenchmark {
     server = SQSRestServerBuilder.start()
 
   @TearDown
-  def shutdown(): Unit =
+  def shutdown(): Unit = {
     server.stopAndWait()
+    ()
+  }
 
   @Param(Array("1", "10", "100", "1000"))
   private var numberOfEvents: Int = 0

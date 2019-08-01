@@ -31,17 +31,6 @@ lazy val commonSettings = Seq(
   organization in ThisBuild := "io.sqs4s",
   scalaVersion := "2.12.8",
   crossScalaVersions := Seq("2.11.12", "2.12.8"),
-  scalacOptions ++=  Seq(
-    "-unchecked",
-    "-feature",
-    "-language:existentials",
-    "-language:higherKinds",
-    "-language:implicitConversions",
-    "-language:postfixOps",
-    "-deprecation",
-    "-encoding",
-    "utf8"
-  ),
   parallelExecution in Test := false,
   scalafmtOnCompile := true,
   licenses += ("MIT", url("http://opensource.org/licenses/MIT")),
@@ -87,7 +76,9 @@ lazy val benchmark = project
     classDirectory in Jmh := (classDirectory in Test).value,
     dependencyClasspath in Jmh := (dependencyClasspath in Test).value,
     compile in Jmh := (compile in Jmh).dependsOn(compile in Test).value,
-    run in Jmh := (run in Jmh).dependsOn(Keys.compile in Jmh).evaluated
+    run in Jmh := (run in Jmh).dependsOn(Keys.compile in Jmh).evaluated,
+    scalacOptions in Test ~= filterConsoleScalacOptions,
+    scalacOptions in Compile ~= filterConsoleScalacOptions
   )
   .dependsOn(
     core,
