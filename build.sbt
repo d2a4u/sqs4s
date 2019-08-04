@@ -75,6 +75,8 @@ lazy val native = project
   .settings(
     name := "sqs4s-native",
     libraryDependencies ++= coreDependencies ++ nativeDependencies,
+    scalacOptions in Test ~= filterConsoleScalacOptions,
+    scalacOptions in Compile ~= filterConsoleScalacOptions,
     commonSettings
   )
   .dependsOn(
