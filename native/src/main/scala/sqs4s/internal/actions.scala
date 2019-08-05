@@ -1,31 +1,37 @@
 package sqs4s.internal
 
-import cats.effect.Sync
+import cats.effect.{Clock, Sync}
 import cats.implicits._
-import org.http4s.Uri
+import org.http4s.{Method, Request, Uri}
 import org.http4s.client.Client
 import org.http4s.scalaxml._
 import sqs4s.internal.CreateQueue.defaults._
+import sqs4s.internal.util.ServiceSetting
 
 import scala.concurrent.duration._
 import scala.language.postfixOps
 import scala.xml.Elem
+import util.auth._
 
-case class SqsSetting(url: String)
+case class SqsSetting(
+  url: String,
+  accessKey: String,
+  secretKey: String,
+  region: String)
 
 trait Action
 
 case class CreateQueue(
-    name: String,
-    delaySeconds: Duration = DelaySeconds,
-    maxMessageSize: Int = MaxMessageSize,
-    messageRetentionPeriod: Duration = MessageRetentionPeriod)
+  name: String,
+  delaySeconds: Duration = DelaySeconds,
+  maxMessageSize: Int = MaxMessageSize,
+  messageRetentionPeriod: Duration = MessageRetentionPeriod)
     extends Action {
 
-  def run[F[_]: Sync](
-      implicit setting: SqsSetting,
-      client: Client[F]
-    ): F[String] = {
+  def run[F[_]: Sync: Clock](
+    setting: SqsSetting,
+    client: Client[F]
+  ): F[String] = {
     val attributes = List(
       "DelaySeconds" -> delaySeconds.toSeconds.toString,
       "MaximumMessageSize" -> maxMessageSize.toString,
@@ -52,14 +58,27 @@ case class CreateQueue(
         case (key, _) => key
       }
 
-    Sync[F].fromEither(Uri.fromString(setting.url)).flatMap { parsed =>
-      val uri = queryQueries.foldLeft(parsed) {
+    for {
+      uri <- Sync[F].fromEither(Uri.fromString(setting.url))
+      uriWithQueries = queryQueries.foldLeft(uri) {
         case (u, (key, value)) =>
           u.withQueryParam(key, value)
       }
-
-      client.expect[Elem](uri).map(xml => (xml \\ "QueueUrl").text)
-    }
+      get = Request[F](
+        method = Method.GET,
+        uri = uriWithQueries
+      )
+      req <- withAuthHeader[F](
+        get,
+        ServiceSetting(
+          setting.accessKey,
+          setting.secretKey,
+          setting.region,
+          "sqs"
+        )
+      )
+      resp <- client.expect[Elem](req).map(xml => (xml \\ "QueueUrl").text)
+    } yield resp
   }
 }
 

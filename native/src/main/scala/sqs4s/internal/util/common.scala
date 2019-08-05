@@ -6,6 +6,7 @@ import java.time.format.DateTimeFormatter
 
 import cats.effect.Sync
 import cats.implicits._
+import fs2._
 import javax.crypto.Mac
 import javax.crypto.spec.SecretKeySpec
 import javax.xml.bind.DatatypeConverter
@@ -35,6 +36,19 @@ object common {
     Sync[F]
       .delay(MessageDigest.getInstance(Sha256).digest(data))
       .flatMap(hexDigest[F])
+
+  private[util] def sha256HexDigest[F[_]: Sync](
+    data: Stream[F, Byte]
+  ): F[String] =
+    data
+      .fold(MessageDigest.getInstance(Sha256)) {
+        case (msg, byte) =>
+          msg.update(byte)
+          msg
+      }
+      .evalMap(msg => hexDigest[F](msg.digest()))
+      .compile
+      .string
 
   private[util] def hexDigest[F[_]: Sync](data: Array[Byte]): F[String] =
     Sync[F].delay {

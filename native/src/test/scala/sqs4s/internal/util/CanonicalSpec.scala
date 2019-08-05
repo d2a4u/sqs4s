@@ -1,9 +1,11 @@
 package sqs4s.internal.util
 
+import java.nio.charset.StandardCharsets
 import java.time.{Instant, ZoneId}
 import java.util.concurrent.TimeUnit
 
 import cats.effect._
+import fs2._
 import org.http4s.Method
 
 class CanonicalSpec extends IOSpec {
@@ -31,19 +33,35 @@ class CanonicalSpec extends IOSpec {
        |content-type;host;x-amz-date
        |e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855""".stripMargin
 
-  "Signer" should "generates canonical request" in {
+  "canonicalRequest" should "generate correct format" in {
     val req = for {
       millis <- Clock[IO].realTime(TimeUnit.MILLISECONDS)
       zoneId <- IO.delay(ZoneId.systemDefault())
       now <- IO.delay(Instant.ofEpochMilli(millis).atZone(zoneId))
-      sts <- canonicalRequest[IO](Method.GET, "/", queries, headers, None, now)
+      sts <- canonicalRequest[IO](
+        Method.GET,
+        "/?Action=ListUsers&Version=2010-05-08",
+        headers,
+        None,
+        now
+      )
     } yield sts
 
     req.unsafeRunSync() shouldEqual canonicalReq
   }
 
-  it should "generate SHA-256 hex digest correctly" in {
+  "sha256HexDigest" should "generate SHA-256 hex digest correctly" in {
     sha256HexDigest[IO](canonicalReq)
       .unsafeRunSync() shouldEqual "f536975d06c0309214f805bb90ccff089219ecd68b2577efef23edd43b7e1a59"
+  }
+
+  "sha256HexDigest" should "generate digest correctly from stream" in {
+    sha256HexDigest[IO](
+      Stream.fromIterator[IO, Byte](
+        canonicalReq
+          .getBytes(StandardCharsets.UTF_8)
+          .toIterator
+      )
+    ).unsafeRunSync() shouldEqual "f536975d06c0309214f805bb90ccff089219ecd68b2577efef23edd43b7e1a59"
   }
 }

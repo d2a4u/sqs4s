@@ -25,7 +25,7 @@ class SqsProducerSpec
   implicit val cs: ContextShift[IO] = IO.contextShift(global)
 
   private var server: SQSRestServer = _
-  val accessKey = "x"
+  val accessKey = "y"
   val secretKey = "x"
   val testQueueName = "test-queue-void"
 

@@ -19,7 +19,7 @@ class SqsConsumerSpec extends FlatSpec with Matchers with BeforeAndAfterAll {
   implicit val cs: ContextShift[IO] = IO.contextShift(global)
 
   private var server: SQSRestServer = _
-  val accessKey = "x"
+  val accessKey = "y"
   val secretKey = "x"
   val txtQueueName = "test-queue-txt"
   val binQueueName = "test-queue-bin"

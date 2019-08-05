@@ -2,7 +2,7 @@ package sqs4s.internal.util
 
 import java.nio.charset.StandardCharsets
 import java.time.format.DateTimeFormatter
-import java.time.{Instant, ZoneId, ZonedDateTime}
+import java.time.{Instant, LocalDate, ZoneId, ZonedDateTime}
 import java.util.concurrent.TimeUnit
 
 import cats.effect.{Clock, Sync}
@@ -39,13 +39,17 @@ object signature {
   ): F[String] =
     for {
       ts <- Sync[F].delay(timestamp.format(DateTimeFormat))
-      ds <- Sync[F].delay(
-        timestamp.toLocalDate.format(DateTimeFormatter.BASIC_ISO_DATE)
-      )
-      credScope = s"$ds/$region/$service/aws4_request"
-    } yield {
-      List(AwsAlgo, ts, credScope, canonicalRequest).mkString(NewLine)
-    }
+      scope <- credScope[F](timestamp.toLocalDate, region, service)
+    } yield List(AwsAlgo, ts, scope, canonicalRequest).mkString(NewLine)
+
+  private[util] def credScope[F[_]: Sync](
+    dateStamp: LocalDate,
+    region: String,
+    service: String
+  ): F[String] =
+    Sync[F]
+      .delay(dateStamp.format(DateTimeFormatter.BASIC_ISO_DATE))
+      .map(ds => s"$ds/$region/$service/aws4_request")
 
   private[util] def signingKey[F[_]: Sync](
     secretKey: String,
