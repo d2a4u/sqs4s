@@ -107,4 +107,106 @@ class Aws4TestSuiteCanonicalRequestSpec extends IOSpec {
       "get-vanilla"
     )
   }
+
+  "get vanilla empty query key" should "be correct" in {
+    val req = Request[IO](
+      method = Method.GET,
+      uri = Uri.fromString("/?Param1=value1").right.get,
+      headers = Headers.of(
+        Header("Host", "example.amazonaws.com")
+      )
+    )
+
+    canonicalRequest[IO](req, ts).unsafeRunSync() shouldEqual expect(
+      "get-vanilla-empty-query-key"
+    )
+  }
+
+  "get vanilla query" should "be correct" in {
+    val req = Request[IO](
+      method = Method.GET,
+      uri = Uri.fromString("/").right.get,
+      headers = Headers.of(
+        Header("Host", "example.amazonaws.com")
+      )
+    )
+
+    canonicalRequest[IO](req, ts).unsafeRunSync() shouldEqual expect(
+      "get-vanilla-query"
+    )
+  }
+
+  "get vanilla query order key" should "be correct" in {
+    val req = Request[IO](
+      method = Method.GET,
+      uri = Uri.fromString("/?Param1=value2&Param1=Value1").right.get,
+      headers = Headers.of(
+        Header("Host", "example.amazonaws.com")
+      )
+    )
+
+    canonicalRequest[IO](req, ts).unsafeRunSync() shouldEqual expect(
+      "get-vanilla-query-order-key"
+    )
+  }
+
+  "get vanilla query order key case" should "be correct" in {
+    val req = Request[IO](
+      method = Method.GET,
+      uri = Uri.fromString("/?Param2=value2&Param1=value1").right.get,
+      headers = Headers.of(
+        Header("Host", "example.amazonaws.com")
+      )
+    )
+
+    canonicalRequest[IO](req, ts).unsafeRunSync() shouldEqual expect(
+      "get-vanilla-query-order-key-case"
+    )
+  }
+
+  "get vanilla query order value" should "be correct" in {
+    val req = Request[IO](
+      method = Method.GET,
+      uri = Uri.fromString("/?Param1=value2&Param1=value1").right.get,
+      headers = Headers.of(
+        Header("Host", "example.amazonaws.com")
+      )
+    )
+
+    canonicalRequest[IO](req, ts).unsafeRunSync() shouldEqual expect(
+      "get-vanilla-query-order-value"
+    )
+  }
+
+  "get vanilla query unreserved" should "be correct" in {
+    val req = Request[IO](
+      method = Method.GET,
+      uri = canonicalUri[IO](
+        "/?-._~0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz=-._~0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
+      ).unsafeRunSync(),
+      headers = Headers.of(
+        Header("Host", "example.amazonaws.com")
+      )
+    )
+
+    canonicalRequest[IO](req, ts).unsafeRunSync() shouldEqual expect(
+      "get-vanilla-query-unreserved"
+    )
+  }
+
+  "get vanilla utf8 query" should "be correct" in {
+    val req = Request[IO](
+      method = Method.GET,
+      uri = canonicalUri[IO](
+        "/?ሴ=bar"
+      ).unsafeRunSync(),
+      headers = Headers.of(
+        Header("Host", "example.amazonaws.com")
+      )
+    )
+
+    canonicalRequest[IO](req, ts).unsafeRunSync() shouldEqual expect(
+      "get-vanilla-utf8-query"
+    )
+  }
 }

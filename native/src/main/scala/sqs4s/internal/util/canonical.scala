@@ -21,8 +21,10 @@ object canonical {
   implicit val sortHeaders: Ordering[(String, String)] =
     (x: (String, String), y: (String, String)) =>
       (x, y) match {
-        case ((kx, _), (ky, _)) =>
-          Ordering[String].compare(kx, ky)
+        case ((kx, vx), (ky, vy)) =>
+          val keyOrdering = Ordering[String].compare(kx, ky)
+          if (keyOrdering == 0) Ordering[String].compare(vx, vy)
+          else keyOrdering
       }
 
   def canonicalUri[F[_]: Sync](url: String): F[Uri] =
@@ -53,6 +55,7 @@ object canonical {
     canonicalRequest[F](
       method,
       uri.path,
+      uri.query.toList.map(_.map(_.getOrElse(""))),
       headers,
       payload,
       ts
@@ -60,45 +63,47 @@ object canonical {
 
   def canonicalRequest[F[_]: Sync](
     method: Method,
-    uri: String,
+    url: String,
     headers: List[(String, String)],
     payload: Option[Array[Byte]],
     ts: ZonedDateTime
   ): F[String] =
     for {
-      canonicalUri <- canonicalUri[F](uri)
-      canonicalHds <- canonicalHeaders[F](headers, method, ts)
-      canonicalQueries = canonicalQueryString(canonicalUri.query.params.toList)
-      canonicalHdsStr = canonicalHeadersString(canonicalHds)
-      signedHds = signedHeaders(canonicalHds)
+      canonicalUri <- canonicalUri[F](url)
       pl = payload.getOrElse(EmptyString.getBytes(StandardCharsets.UTF_8))
-      hashedPl <- sha256HexDigest[F](pl)
-    } yield {
-      method + NewLine +
-        canonicalUri.path + NewLine +
-        canonicalQueries + NewLine +
-        canonicalHdsStr + NewLine +
-        signedHds + NewLine +
-        hashedPl
-    }
+      strPl = Stream.fromIterator[F, Byte](pl.toIterator)
+      req <- canonicalRequest[F](method, canonicalUri, headers, strPl, ts)
+    } yield req
 
   def canonicalRequest[F[_]: Sync](
     method: Method,
-    uri: String,
+    url: String,
     headers: List[(String, String)],
     payload: Stream[F, Byte],
     ts: ZonedDateTime
   ): F[String] =
     for {
-      canonicalUri <- canonicalUri[F](uri)
+      canonicalUri <- canonicalUri[F](url)
+      req <- canonicalRequest[F](method, canonicalUri, headers, payload, ts)
+    } yield req
+
+  def canonicalRequest[F[_]: Sync](
+    method: Method,
+    path: String,
+    query: List[(String, String)],
+    headers: List[(String, String)],
+    payload: Stream[F, Byte],
+    ts: ZonedDateTime
+  ): F[String] =
+    for {
       canonicalHds <- canonicalHeaders[F](headers, method, ts)
-      canonicalQueries = canonicalQueryString(canonicalUri.query.params.toList)
+      canonicalQueries = canonicalQueryString(query)
       canonicalHdsStr = canonicalHeadersString(canonicalHds)
       signedHds = signedHeaders(canonicalHds)
       hashedPl <- sha256HexDigest[F](payload)
     } yield {
       method + NewLine +
-        canonicalUri.path + NewLine +
+        path + NewLine +
         canonicalQueries + NewLine +
         canonicalHdsStr + NewLine +
         signedHds + NewLine +
@@ -169,7 +174,7 @@ object canonical {
     queries.sorted
       .map {
         case (key, value) =>
-          key + "=" + URLEncoder.encode(value, StandardCharsets.UTF_8.toString)
+          key + "=" + value
       }
       .mkString("&")
 }
