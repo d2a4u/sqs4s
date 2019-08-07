@@ -25,7 +25,8 @@ lazy val sqsDependencies = Seq(
 
 lazy val nativeDependencies = Seq(
   "org.http4s" %% "http4s-blaze-client" % http4sVersion,
-  "org.http4s" %% "http4s-scala-xml" % http4sVersion
+  "org.http4s" %% "http4s-scala-xml" % http4sVersion,
+  "org.scala-lang.modules" %% "scala-parser-combinators" % "1.1.2"
 )
 
 lazy val benchmarkDependencies = Seq(

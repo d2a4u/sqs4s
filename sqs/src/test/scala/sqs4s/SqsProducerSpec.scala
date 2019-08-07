@@ -72,11 +72,11 @@ class SqsProducerSpec
   }
 
   it should "produce multiple text messages" in new Fixture {
-    val events = random[Event](10).toIterator
+    val events = random[Event](10)
     producer
       .use(
         _.multiple[Event, String, TextMessage](
-          Stream.fromIterator[IO, Event](events)
+          Stream.emits[IO, Event](events)
         ).compile.toList
       )
       .unsafeRunSync()
@@ -84,11 +84,11 @@ class SqsProducerSpec
   }
 
   it should "produce multiple binary messages" in new Fixture {
-    val events = random[Event](10).toIterator
+    val events = random[Event](10)
     producer
       .use(
         _.multiple[Event, Stream[IO, Byte], BytesMessage](
-          Stream.fromIterator[IO, Event](events)
+          Stream.emits[IO, Event](events)
         ).compile.toList
       )
       .unsafeRunSync()
@@ -100,7 +100,7 @@ class SqsProducerSpec
     val results = producer
       .use(
         _.batch[Event, String, TextMessage](
-          Stream.fromIterator[IO, (String, Event)](events.toIterator),
+          Stream.emits[IO, (String, Event)](events),
           3,
           5.seconds
         ).compile.toList
@@ -115,7 +115,7 @@ class SqsProducerSpec
     val results = producer
       .use(
         _.attemptBatch[Event, String, TextMessage](
-          Stream.fromIterator[IO, (String, Event)](events.toIterator),
+          Stream.emits[IO, (String, Event)](events),
           3,
           5.seconds
         ).compile.toList
@@ -136,8 +136,8 @@ class SqsProducerSpec
     // when sending batch, each entry should have unique ID,
     // here, all events have the same ID, it should fail
     val event = random[Event]
-    val erroneous = Stream.fromIterator[IO, (String, Event)](
-      List.fill(10)(event).map(e => (e.id, e)).toIterator
+    val erroneous = Stream.emits[IO, (String, Event)](
+      List.fill(10)(event).map(e => (e.id, e))
     )
     val results = producer
       .use(

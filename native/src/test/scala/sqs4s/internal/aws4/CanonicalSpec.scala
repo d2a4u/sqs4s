@@ -1,4 +1,4 @@
-package sqs4s.internal.util
+package sqs4s.internal.aws4
 
 import java.nio.charset.StandardCharsets
 import java.time.{Instant, ZoneId}
@@ -28,7 +28,7 @@ class CanonicalSpec extends IOSpec {
        |Action=ListUsers&Version=2010-05-08
        |content-type:application/x-www-form-urlencoded; charset=utf-8
        |host:iam.amazonaws.com
-       |x-amz-date:$fakeTimeStamp
+       |x-amz-date:$testTimeStamp
        |
        |content-type;host;x-amz-date
        |e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855""".stripMargin
@@ -57,11 +57,7 @@ class CanonicalSpec extends IOSpec {
 
   "sha256HexDigest" should "generate digest correctly from stream" in {
     sha256HexDigest[IO](
-      Stream.fromIterator[IO, Byte](
-        canonicalReq
-          .getBytes(StandardCharsets.UTF_8)
-          .toIterator
-      )
+      Stream.emits[IO, Byte](canonicalReq.getBytes(StandardCharsets.UTF_8))
     ).unsafeRunSync() shouldEqual "f536975d06c0309214f805bb90ccff089219ecd68b2577efef23edd43b7e1a59"
   }
 }

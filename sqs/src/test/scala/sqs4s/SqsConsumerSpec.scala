@@ -94,7 +94,7 @@ class SqsConsumerSpec extends FlatSpec with Matchers with BeforeAndAfterAll {
 
   it should "manually acknowledge message" in new Fixture {
     client.createQueue(txtQueueName)
-    val events = Stream.fromIterator[IO, Event](random[Event](10).toIterator)
+    val events = Stream.emits[IO, Event](random[Event](10))
     val producerStrSrc =
       SqsProducer
         .resource[IO](txtQueueName, Session.AUTO_ACKNOWLEDGE, client)

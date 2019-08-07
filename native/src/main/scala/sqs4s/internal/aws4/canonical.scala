@@ -1,4 +1,4 @@
-package sqs4s.internal.util
+package sqs4s.internal.aws4
 
 import java.net.{URI, URLEncoder}
 import java.nio.charset.StandardCharsets
@@ -55,7 +55,10 @@ object canonical {
     canonicalRequest[F](
       method,
       uri.path,
-      uri.query.toList.map(_.map(_.getOrElse(""))),
+      uri.query.toList.map {
+        case (k, v) =>
+          k -> v.getOrElse("")
+      },
       headers,
       payload,
       ts
@@ -71,7 +74,7 @@ object canonical {
     for {
       canonicalUri <- canonicalUri[F](url)
       pl = payload.getOrElse(EmptyString.getBytes(StandardCharsets.UTF_8))
-      strPl = Stream.fromIterator[F, Byte](pl.toIterator)
+      strPl = Stream.emits[F, Byte](pl)
       req <- canonicalRequest[F](method, canonicalUri, headers, strPl, ts)
     } yield req
 
@@ -97,7 +100,7 @@ object canonical {
   ): F[String] =
     for {
       canonicalHds <- canonicalHeaders[F](headers, method, ts)
-      canonicalQueries = canonicalQueryString(query)
+      canonicalQueries <- canonicalQueryString[F](query)
       canonicalHdsStr = canonicalHeadersString(canonicalHds)
       signedHds = signedHeaders(canonicalHds)
       hashedPl <- sha256HexDigest[F](payload)
@@ -110,7 +113,7 @@ object canonical {
         hashedPl
     }
 
-  private[util] def signedHeaders(
+  private[aws4] def signedHeaders(
     canonicalHeaders: List[(String, String)]
   ): String =
     canonicalHeaders
@@ -153,10 +156,8 @@ object canonical {
         .andThen(multiLineGuarded)
         .apply(rich)
         .map {
-          case (XAmzDate, v) =>
-            XAmzDate.toLowerCase -> v
           case (k, v) =>
-            k.toLowerCase -> v.toLowerCase
+            k.toLowerCase -> v
         }
         .toList
         .sorted
@@ -170,11 +171,26 @@ object canonical {
     headers.map(concat _ tupled).mkString(NewLine) + NewLine
   }
 
-  private def canonicalQueryString(queries: List[(String, String)]): String =
-    queries.sorted
-      .map {
-        case (key, value) =>
-          key + "=" + value
+  private def canonicalQueryString[F[_]: Sync](
+    queries: List[(String, String)]
+  ): F[String] =
+    Sync[F].delay {
+      // URL encode but revert unreserved characters
+      def urlEncode(str: String): String = {
+        URLEncoder
+          .encode(str, StandardCharsets.UTF_8.name())
+          .replaceAll("\\+", "%20")
+          .replaceAll("\\%21", "!")
+          .replaceAll("\\%27", "'")
+          .replaceAll("\\%28", "(")
+          .replaceAll("\\%29", ")")
+          .replaceAll("\\%7E", "~")
       }
-      .mkString("&")
+      queries.sorted
+        .map {
+          case (key, value) =>
+            urlEncode(key) + "=" + urlEncode(value)
+        }
+        .mkString("&")
+    }
 }

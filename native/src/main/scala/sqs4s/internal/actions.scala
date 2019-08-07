@@ -6,12 +6,12 @@ import org.http4s.{Method, Request, Uri}
 import org.http4s.client.Client
 import org.http4s.scalaxml._
 import sqs4s.internal.CreateQueue.defaults._
-import sqs4s.internal.util.ServiceSetting
+import sqs4s.internal.aws4.ServiceSetting
 
 import scala.concurrent.duration._
 import scala.language.postfixOps
 import scala.xml.Elem
-import util.auth._
+import aws4.auth._
 
 case class SqsSetting(
   url: String,
