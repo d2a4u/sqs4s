@@ -17,7 +17,7 @@ lazy val coreDependencies = Seq(
 ) ++ circe
 
 lazy val sqsDependencies = Seq(
-  "com.amazonaws" % "amazon-sqs-java-messaging-lib" % "1.0.6",
+  "com.amazonaws" % "amazon-sqs-java-messaging-lib" % "1.0.7",
   "com.danielasfregola" %% "random-data-generator" % "2.7" % "test",
   "org.elasticmq" %% "elasticmq-rest-sqs" % "0.14.7" % "test"
 )
