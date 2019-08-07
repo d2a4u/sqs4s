@@ -23,7 +23,7 @@ lazy val sqsDependencies = Seq(
 )
 
 lazy val benchmarkDependencies = Seq(
-  "org.slf4j" % "log4j-over-slf4j" % "1.7.26" % "test",
+  "org.slf4j" % "log4j-over-slf4j" % "1.7.27" % "test",
   "log4j" % "log4j" % "1.2.17" % "test"
 )
 
