@@ -1,27 +1,18 @@
 package sqs4s.internal.aws4.aws4suite
 
-import java.time.{Instant, ZoneId}
-import java.util.concurrent.TimeUnit
-
-import cats.effect.{Clock, IO}
+import cats.effect.IO
 import org.http4s.Method._
 import org.http4s._
 import org.http4s.client.dsl.io._
 import sqs4s.internal.aws4
 import sqs4s.internal.aws4.IOSpec
+import sqs4s.internal.models.CReq
 
 import scala.io.Source
 
 class CanonicalRequestSpec extends IOSpec {
 
-  import aws4.canonical._
-
-  val ts =
-    Instant
-      .ofEpochMilli(
-        Clock[IO].realTime(TimeUnit.MILLISECONDS).unsafeRunSync()
-      )
-      .atZone(ZoneId.systemDefault())
+  import aws4.common._
 
   def expect(testName: String): String =
     Source
@@ -45,11 +36,12 @@ class CanonicalRequestSpec extends IOSpec {
         Header("Host", "example.amazonaws.com"),
         Header("My-Header1", "value2"),
         Header("My-Header1", "value2"),
-        Header("My-Header1", "value1")
+        Header("My-Header1", "value1"),
+        Header(XAmzDate, testTimeStamp)
       )
     )
 
-    canonicalRequest[IO](req, ts).unsafeRunSync() shouldEqual expect(
+    CReq[IO](req).value.unsafeRunSync() shouldEqual expect(
       "get-header-key-duplicate"
     )
   }
@@ -63,11 +55,12 @@ class CanonicalRequestSpec extends IOSpec {
         Header("My-Header1", """value1
             |  value2
             |     value3
-          """.stripMargin)
+          """.stripMargin),
+        Header(XAmzDate, testTimeStamp)
       )
     )
 
-    canonicalRequest[IO](req, ts).unsafeRunSync() shouldEqual expect(
+    CReq[IO](req).value.unsafeRunSync() shouldEqual expect(
       "get-header-value-multiline"
     )
   }
@@ -78,11 +71,12 @@ class CanonicalRequestSpec extends IOSpec {
       uri =
         uri"/-._~0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz",
       headers = Headers.of(
-        Header("Host", "example.amazonaws.com")
+        Header("Host", "example.amazonaws.com"),
+        Header(XAmzDate, testTimeStamp)
       )
     )
 
-    canonicalRequest[IO](req, ts).unsafeRunSync() shouldEqual expect(
+    CReq[IO](req).value.unsafeRunSync() shouldEqual expect(
       "get-unreserved"
     )
   }
@@ -92,11 +86,12 @@ class CanonicalRequestSpec extends IOSpec {
       method = Method.GET,
       uri = canonicalUri[IO]("/ሴ").unsafeRunSync(),
       headers = Headers.of(
-        Header("Host", "example.amazonaws.com")
+        Header("Host", "example.amazonaws.com"),
+        Header(XAmzDate, testTimeStamp)
       )
     )
 
-    canonicalRequest[IO](req, ts).unsafeRunSync() shouldEqual expect(
+    CReq[IO](req).value.unsafeRunSync() shouldEqual expect(
       "get-utf8"
     )
   }
@@ -106,11 +101,12 @@ class CanonicalRequestSpec extends IOSpec {
       method = Method.GET,
       uri = uri"/",
       headers = Headers.of(
-        Header("Host", "example.amazonaws.com")
+        Header("Host", "example.amazonaws.com"),
+        Header(XAmzDate, testTimeStamp)
       )
     )
 
-    canonicalRequest[IO](req, ts).unsafeRunSync() shouldEqual expect(
+    CReq[IO](req).value.unsafeRunSync() shouldEqual expect(
       "get-vanilla"
     )
   }
@@ -120,11 +116,12 @@ class CanonicalRequestSpec extends IOSpec {
       method = Method.GET,
       uri = uri"/?Param1=value1",
       headers = Headers.of(
-        Header("Host", "example.amazonaws.com")
+        Header("Host", "example.amazonaws.com"),
+        Header(XAmzDate, testTimeStamp)
       )
     )
 
-    canonicalRequest[IO](req, ts).unsafeRunSync() shouldEqual expect(
+    CReq[IO](req).value.unsafeRunSync() shouldEqual expect(
       "get-vanilla-empty-query-key"
     )
   }
@@ -134,11 +131,12 @@ class CanonicalRequestSpec extends IOSpec {
       method = Method.GET,
       uri = uri"/",
       headers = Headers.of(
-        Header("Host", "example.amazonaws.com")
+        Header("Host", "example.amazonaws.com"),
+        Header(XAmzDate, testTimeStamp)
       )
     )
 
-    canonicalRequest[IO](req, ts).unsafeRunSync() shouldEqual expect(
+    CReq[IO](req).value.unsafeRunSync() shouldEqual expect(
       "get-vanilla-query"
     )
   }
@@ -148,11 +146,12 @@ class CanonicalRequestSpec extends IOSpec {
       method = Method.GET,
       uri = uri"/?Param1=value2&Param1=Value1",
       headers = Headers.of(
-        Header("Host", "example.amazonaws.com")
+        Header("Host", "example.amazonaws.com"),
+        Header(XAmzDate, testTimeStamp)
       )
     )
 
-    canonicalRequest[IO](req, ts).unsafeRunSync() shouldEqual expect(
+    CReq[IO](req).value.unsafeRunSync() shouldEqual expect(
       "get-vanilla-query-order-key"
     )
   }
@@ -162,11 +161,12 @@ class CanonicalRequestSpec extends IOSpec {
       method = Method.GET,
       uri = uri"/?Param2=value2&Param1=value1",
       headers = Headers.of(
-        Header("Host", "example.amazonaws.com")
+        Header("Host", "example.amazonaws.com"),
+        Header(XAmzDate, testTimeStamp)
       )
     )
 
-    canonicalRequest[IO](req, ts).unsafeRunSync() shouldEqual expect(
+    CReq[IO](req).value.unsafeRunSync() shouldEqual expect(
       "get-vanilla-query-order-key-case"
     )
   }
@@ -176,11 +176,12 @@ class CanonicalRequestSpec extends IOSpec {
       method = Method.GET,
       uri = uri"/?Param1=value2&Param1=value1",
       headers = Headers.of(
-        Header("Host", "example.amazonaws.com")
+        Header("Host", "example.amazonaws.com"),
+        Header(XAmzDate, testTimeStamp)
       )
     )
 
-    canonicalRequest[IO](req, ts).unsafeRunSync() shouldEqual expect(
+    CReq[IO](req).value.unsafeRunSync() shouldEqual expect(
       "get-vanilla-query-order-value"
     )
   }
@@ -192,11 +193,12 @@ class CanonicalRequestSpec extends IOSpec {
         "/?-._~0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz=-._~0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
       ).unsafeRunSync(),
       headers = Headers.of(
-        Header("Host", "example.amazonaws.com")
+        Header("Host", "example.amazonaws.com"),
+        Header(XAmzDate, testTimeStamp)
       )
     )
 
-    canonicalRequest[IO](req, ts).unsafeRunSync() shouldEqual expect(
+    CReq[IO](req).value.unsafeRunSync() shouldEqual expect(
       "get-vanilla-query-unreserved"
     )
   }
@@ -206,11 +208,12 @@ class CanonicalRequestSpec extends IOSpec {
       method = Method.GET,
       uri = canonicalUri[IO]("/?ሴ=bar").unsafeRunSync(),
       headers = Headers.of(
-        Header("Host", "example.amazonaws.com")
+        Header("Host", "example.amazonaws.com"),
+        Header(XAmzDate, testTimeStamp)
       )
     )
 
-    canonicalRequest[IO](req, ts).unsafeRunSync() shouldEqual expect(
+    CReq[IO](req).value.unsafeRunSync() shouldEqual expect(
       "get-vanilla-utf8-query"
     )
   }
@@ -220,11 +223,12 @@ class CanonicalRequestSpec extends IOSpec {
       method = Method.GET,
       uri = canonicalUri[IO]("/example/..").unsafeRunSync(),
       headers = Headers.of(
-        Header("Host", "example.amazonaws.com")
+        Header("Host", "example.amazonaws.com"),
+        Header(XAmzDate, testTimeStamp)
       )
     )
 
-    canonicalRequest[IO](req, ts)
+    CReq[IO](req).value
       .unsafeRunSync() shouldEqual expectNested(
       "normalize-path",
       "get-relative"
@@ -236,11 +240,12 @@ class CanonicalRequestSpec extends IOSpec {
       method = Method.POST,
       uri = uri"/",
       headers = Headers.of(
-        Header("Host", "example.amazonaws.com")
+        Header("Host", "example.amazonaws.com"),
+        Header(XAmzDate, testTimeStamp)
       )
     )
 
-    canonicalRequest[IO](req, ts).unsafeRunSync() shouldEqual expect(
+    CReq[IO](req).value.unsafeRunSync() shouldEqual expect(
       "post-header-key-case"
     )
   }
@@ -251,11 +256,12 @@ class CanonicalRequestSpec extends IOSpec {
       uri = uri"/",
       headers = Headers.of(
         Header("Host", "example.amazonaws.com"),
-        Header("My-Header1", "value1")
+        Header("My-Header1", "value1"),
+        Header(XAmzDate, testTimeStamp)
       )
     )
 
-    canonicalRequest[IO](req, ts).unsafeRunSync() shouldEqual expect(
+    CReq[IO](req).value.unsafeRunSync() shouldEqual expect(
       "post-header-key-sort"
     )
   }
@@ -266,11 +272,12 @@ class CanonicalRequestSpec extends IOSpec {
       uri = uri"/",
       headers = Headers.of(
         Header("Host", "example.amazonaws.com"),
-        Header("My-Header1", "VALUE1")
+        Header("My-Header1", "VALUE1"),
+        Header(XAmzDate, testTimeStamp)
       )
     )
 
-    canonicalRequest[IO](req, ts).unsafeRunSync() shouldEqual expect(
+    CReq[IO](req).value.unsafeRunSync() shouldEqual expect(
       "post-header-value-case"
     )
   }
@@ -280,11 +287,12 @@ class CanonicalRequestSpec extends IOSpec {
       method = Method.POST,
       uri = uri"/",
       headers = Headers.of(
-        Header("Host", "example.amazonaws.com")
+        Header("Host", "example.amazonaws.com"),
+        Header(XAmzDate, testTimeStamp)
       )
     )
 
-    canonicalRequest[IO](req, ts).unsafeRunSync() shouldEqual expectNested(
+    CReq[IO](req).value.unsafeRunSync() shouldEqual expectNested(
       "post-sts-token",
       "post-sts-header-after"
     )
@@ -299,11 +307,12 @@ class CanonicalRequestSpec extends IOSpec {
         Header(
           "X-Amz-Security-Token",
           "AQoDYXdzEPT//////////wEXAMPLEtc764bNrC9SAPBSM22wDOk4x4HIZ8j4FZTwdQWLWsKWHGBuFqwAeMicRXmxfpSPfIeoIYRqTflfKD8YUuwthAx7mSEI/qkPpKPi/kMcGdQrmGdeehM4IC1NtBmUpp2wUE8phUZampKsburEDy0KPkyQDYwT7WZ0wq5VSXDvp75YU9HFvlRd8Tx6q6fE8YQcHNVXAkiY9q6d+xo0rKwT38xVqr7ZD0u0iPPkUL64lIZbqBAz+scqKmlzm8FDrypNC9Yjc8fPOLn9FX9KSYvKTr4rvx3iSIlTJabIQwj2ICCR/oLxBA=="
-        )
+        ),
+        Header(XAmzDate, testTimeStamp)
       )
     )
 
-    canonicalRequest[IO](req, ts).unsafeRunSync() shouldEqual expectNested(
+    CReq[IO](req).value.unsafeRunSync() shouldEqual expectNested(
       "post-sts-token",
       "post-sts-header-before"
     )
@@ -315,11 +324,11 @@ class CanonicalRequestSpec extends IOSpec {
       uri = uri"/",
       headers = Headers.of(
         Header("Host", "example.amazonaws.com"),
-        Header("X-Amz-Date", "20150830T123600Z")
+        Header(XAmzDate, testTimeStamp)
       )
     )
 
-    canonicalRequest[IO](req, ts).unsafeRunSync() shouldEqual expect(
+    CReq[IO](req).value.unsafeRunSync() shouldEqual expect(
       "post-vanilla"
     )
   }
@@ -330,11 +339,11 @@ class CanonicalRequestSpec extends IOSpec {
       uri = uri"/?Param1=value1",
       headers = Headers.of(
         Header("Host", "example.amazonaws.com"),
-        Header("X-Amz-Date", "20150830T123600Z")
+        Header(XAmzDate, testTimeStamp)
       )
     )
 
-    canonicalRequest[IO](req, ts).unsafeRunSync() shouldEqual expect(
+    CReq[IO](req).value.unsafeRunSync() shouldEqual expect(
       "post-vanilla-empty-query-value"
     )
   }
@@ -345,11 +354,11 @@ class CanonicalRequestSpec extends IOSpec {
       uri = uri"/?Param1=value1",
       headers = Headers.of(
         Header("Host", "example.amazonaws.com"),
-        Header("X-Amz-Date", "20150830T123600Z")
+        Header(XAmzDate, testTimeStamp)
       )
     )
 
-    canonicalRequest[IO](req, ts).unsafeRunSync() shouldEqual expect(
+    CReq[IO](req).value.unsafeRunSync() shouldEqual expect(
       "post-vanilla-query"
     )
   }
@@ -360,13 +369,13 @@ class CanonicalRequestSpec extends IOSpec {
       post.putHeaders(
         Header("Content-Type", "application/x-www-form-urlencoded"),
         Header("Host", "example.amazonaws.com"),
-        Header("X-Amz-Date", "20150830T123600Z")
+        Header(XAmzDate, testTimeStamp)
       )
     }
 
     (for {
       r <- req
-      cr <- canonicalRequest[IO](r, ts)
+      cr <- CReq[IO](r).value
     } yield cr).unsafeRunSync() shouldEqual
       """POST
         |/
@@ -389,13 +398,13 @@ class CanonicalRequestSpec extends IOSpec {
           "application/x-www-form-urlencoded; charset=utf-8"
         ),
         Header("Host", "example.amazonaws.com"),
-        Header("X-Amz-Date", "20150830T123600Z")
+        Header(XAmzDate, testTimeStamp)
       )
     }
 
     (for {
       r <- req
-      cr <- canonicalRequest[IO](r, ts)
+      cr <- CReq[IO](r).value
     } yield cr).unsafeRunSync() shouldEqual
       """POST
         |/

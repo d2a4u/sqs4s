@@ -10,7 +10,7 @@ import sqs4s.internal.aws4._
 import scala.io.Source
 
 class StringToSignSpec extends IOSpec with Inspectors {
-  import signature._
+  import common._
 
   val region = "us-east-1"
   val service = "service"
