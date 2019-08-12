@@ -18,9 +18,10 @@ class CreateQueueSpec extends IOSpec {
     def monotonic(unit: TimeUnit): IO[Long] = ???
   }
 
+  val AwsAccountId = "209369606763"
   "CreateQueue" should "create queue when run" in {
     val setting = SqsSetting(
-      "https://sqs.eu-west-1.amazonaws.com/209369606763",
+      "https://sqs.eu-west-1.amazonaws.com/",
       "AKIATBP3GVJVRPDG3W4C",
       "U/9MjFLamkzYmIylDIC7nklsHpLZpJXz3nT5CetR",
       "eu-west-1"

@@ -1,16 +1,12 @@
 package sqs4s.api
 
-import java.time.format.DateTimeFormatter
-import java.time.{Instant, ZoneId}
-import java.util.concurrent.TimeUnit
-
 import cats.effect.{Clock, Sync}
 import cats.implicits._
 import org.http4s.client.Client
 import org.http4s.scalaxml._
-import org.http4s.{Header, Headers, Method, Request, Uri}
+import org.http4s.{Method, Request, Status, Uri}
 import sqs4s.api.CreateQueue.defaults._
-import sqs4s.internal.aws4.common.IsoDateTimeFormat
+import sqs4s.internal.aws4.common.RichRequest
 import sqs4s.internal.models.CReq
 
 import scala.concurrent.duration._
@@ -63,54 +59,27 @@ case class CreateQueue(
       }
 
     for {
-      millis <- Clock[F].realTime(TimeUnit.MILLISECONDS)
-      zoneId <- Sync[F].delay(ZoneId.systemDefault())
-      now <- Sync[F].delay(Instant.ofEpochMilli(millis).atZone(zoneId))
-      fmt <- Sync[F].delay(
-        DateTimeFormatter.ofPattern(IsoDateTimeFormat)
-      )
-      ts <- Sync[F].delay(now.format(fmt))
-      expires <- Sync[F].delay(now.plusHours(1).format(fmt))
-      _ = println("==========================" + ts)
       uri <- Sync[F].fromEither(Uri.fromString(setting.url))
       uriWithQueries = queryQueries.foldLeft(uri) {
         case (u, (key, value)) =>
           u.withQueryParam(key, value)
       }
-      get = Request[F](
+      get <- Request[F](
         method = Method.GET,
-        uri = uriWithQueries,
-        headers = {
-          uri.host
-            .map { h =>
-              Headers.of(
-                Header("Expires", expires),
-                Header("Host", h.value)
-              )
-            }
-            .getOrElse {
-              Headers.of(
-                Header("Expires", expires)
-              )
-            }
-        }
-      )
+        uri = uriWithQueries
+      ).putHostHeader(uriWithQueries)
+        .putExpiresHeader[F]()
+        .flatMap(_.putXAmzDateHeader[F])
       creq = CReq[F](get)
-      authed <- creq.withAuthHeader(
+      authed <- creq.toAuthorizedRequest(
         setting.accessKey,
         setting.secretKey,
         setting.region,
         "sqs"
       )
-      vv <- creq.value
-      _ = println("Canonical: " + vv)
-      _ = println("==========================")
-      _ = println(
-        s"""Request(method=${authed.method}, uri=${authed.uri}, headers=${authed.headers}"""
-      )
       resp <- client
         .expectOr[Elem](authed) {
-          case resp =>
+          case resp if resp.status == Status.Forbidden =>
             for {
               bytes <- resp.body.compile.toChunk
               str = new String(bytes.toArray)

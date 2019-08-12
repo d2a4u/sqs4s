@@ -3,26 +3,29 @@ package sqs4s.internal.aws4
 import java.net.URI
 import java.nio.charset.StandardCharsets
 import java.security.MessageDigest
-import java.time.{LocalDate, ZoneId, ZonedDateTime}
 import java.time.format.DateTimeFormatter
+import java.time._
+import java.util.concurrent.TimeUnit
 
-import cats.effect.Sync
+import cats.effect.{Clock, Sync}
 import cats.implicits._
 import fs2._
 import javax.crypto.Mac
 import javax.crypto.spec.SecretKeySpec
 import javax.xml.bind.DatatypeConverter
-import org.http4s.Uri
+import org.http4s.{Header, Request, Uri}
 
 object common {
 
-  val IsoDateTimeFormat = "yyyyMMdd'T'HHmmssZ"
+  val IsoDateTimeFormat = "yyyyMMdd'T'HHmmss'Z'"
   val Algo = "HmacSHA256"
   val AwsAlgo = "AWS4-HMAC-SHA256"
   val Sha256 = "SHA-256"
   val NewLine = "\n"
   val EmptyString = ""
   val XAmzDate = "x-amz-date"
+  val Expires = "Expires"
+  val Host = "Host"
 
   def sha256HexDigest[F[_]: Sync](data: Stream[F, Byte]): F[String] =
     data
@@ -45,7 +48,7 @@ object common {
     region: String,
     service: String,
     canonicalRequest: String,
-    timestamp: ZonedDateTime
+    timestamp: LocalDateTime
   ): F[String] =
     for {
       ts <- Sync[F].delay {
@@ -70,11 +73,11 @@ object common {
     secretKey: String,
     region: String,
     service: String,
-    timestamp: ZonedDateTime
+    date: LocalDate
   ): F[Array[Byte]] =
     for {
       date <- Sync[F].delay(
-        timestamp.toLocalDate.format(DateTimeFormatter.BASIC_ISO_DATE)
+        date.format(DateTimeFormatter.BASIC_ISO_DATE)
       )
       signedSecret = s"AWS4$secretKey".getBytes(StandardCharsets.UTF_8)
       signedDate <- hmacSha256[F](signedSecret, date)
@@ -110,4 +113,43 @@ object common {
           if (keyOrdering == 0) Ordering[String].compare(vx, vy)
           else keyOrdering
       }
+
+  implicit class RichRequest[F[_]](request: Request[F]) {
+    def putHostHeader(uri: Uri): Request[F] =
+      uri.host
+        .map(h => request.putHeaders(Header(Host, h.value)))
+        .getOrElse(request)
+
+    def putExpiresHeader[G[x] >: F[x]: Sync: Clock](
+      seconds: Long = 15 * 60
+    ): G[Request[F]] =
+      for {
+        millis <- Clock[G].realTime(TimeUnit.MILLISECONDS)
+        expires <- Sync[G].delay {
+          val now = Instant.ofEpochMilli(millis)
+          val fmt = DateTimeFormatter.ofPattern(IsoDateTimeFormat)
+          LocalDateTime
+            .ofInstant(now.plusSeconds(seconds), ZoneOffset.UTC)
+            .format(fmt)
+        }
+      } yield {
+        request.putHeaders(
+          Header(Expires, expires)
+        )
+      }
+
+    def putXAmzDateHeader[G[x] >: F[x]: Sync: Clock]: G[Request[F]] =
+      for {
+        millis <- Clock[G].realTime(TimeUnit.MILLISECONDS)
+        ts <- Sync[G].delay {
+          val now = Instant.ofEpochMilli(millis)
+          val fmt = DateTimeFormatter.ofPattern(IsoDateTimeFormat)
+          LocalDateTime.ofInstant(now, ZoneOffset.UTC).format(fmt)
+        }
+      } yield {
+        request.putHeaders(
+          Header(XAmzDate, ts)
+        )
+      }
+  }
 }

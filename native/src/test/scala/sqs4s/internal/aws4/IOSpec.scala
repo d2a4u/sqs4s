@@ -1,7 +1,7 @@
 package sqs4s.internal.aws4
 
 import java.time.format.DateTimeFormatter
-import java.time.{Instant, LocalDateTime, ZoneId}
+import java.time.{Instant, LocalDateTime, ZoneOffset}
 
 import cats.effect._
 import org.scalatest.{FlatSpecLike, Matchers}
@@ -16,7 +16,6 @@ trait IOSpec extends FlatSpecLike with Matchers {
   val testDateTime =
     LocalDateTime
       .parse(testTimeStamp, DateTimeFormatter.ofPattern("yyyyMMdd'T'HHmmss'Z'"))
-      .atZone(ZoneId.of("Z").normalized())
   Instant.now()
   implicit val timer: Timer[IO] = IO.timer(global)
   implicit val cs: ContextShift[IO] = IO.contextShift(global)
@@ -24,7 +23,7 @@ trait IOSpec extends FlatSpecLike with Matchers {
   implicit lazy val testClock = new Clock[IO] {
     def realTime(unit: TimeUnit): IO[Long] = IO {
       testDateTime
-        .toInstant()
+        .toInstant(ZoneOffset.UTC)
         .toEpochMilli()
     }
     def monotonic(unit: TimeUnit): IO[Long] = ???
