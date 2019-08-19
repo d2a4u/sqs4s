@@ -3,13 +3,15 @@ package sqs4s.internal
 import java.time.Instant
 
 import cats.effect.{Clock, IO}
+import cats.implicits._
 import org.http4s.client.blaze.BlazeClientBuilder
-import sqs4s.api.{CreateQueue, SqsSetting}
+import sqs4s.api.{SendMessage, SqsSetting}
 import sqs4s.internal.aws4.IOSpec
+import sqs4s.serialization.MessageEncoder
 
 import scala.concurrent.duration.TimeUnit
 
-class CreateQueueSpec extends IOSpec {
+class SendMessageSpec extends IOSpec {
   override implicit lazy val testClock: Clock[IO] = new Clock[IO] {
     def realTime(unit: TimeUnit): IO[Long] = IO.delay {
       Instant.now().toEpochMilli
@@ -20,8 +22,9 @@ class CreateQueueSpec extends IOSpec {
 
   val accessKey = sys.env("ACCESS_KEY")
   val secretKey = sys.env("SECRET_KEY")
+  val awsAccountId = sys.env("AWS_ACCOUNT_ID")
 
-  "CreateQueue" should "create queue when run" in {
+  "SendMessage" should "send a message to SQS" in {
     val setting = SqsSetting(
       "https://sqs.eu-west-1.amazonaws.com/",
       accessKey,
@@ -29,9 +32,17 @@ class CreateQueueSpec extends IOSpec {
       "eu-west-1"
     )
 
+    implicit val encoder = new MessageEncoder[IO, String, String, String] {
+      override def to(u: String): IO[String] = u.pure[IO]
+
+      override def serialize(t: String): IO[String] = t.pure[IO]
+    }
     val created = BlazeClientBuilder[IO](ec).resource
       .use { implicit client =>
-        CreateQueue[IO]("test").runWith(setting)
+        SendMessage[IO, String](
+          "test",
+          s"https://sqs.eu-west-1.amazonaws.com/$awsAccountId/test"
+        ).runWith(setting)
       }
       .unsafeRunSync()
     println(created)

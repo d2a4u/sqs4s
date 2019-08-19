@@ -4,14 +4,17 @@ import cats.effect.{Clock, Sync}
 import cats.implicits._
 import org.http4s.client.Client
 import org.http4s.scalaxml._
-import org.http4s.{Method, Request, Status, Uri}
+import org.http4s.{Method, Request, Uri}
 import sqs4s.api.CreateQueue.defaults._
+import sqs4s.api.errors.SqsError
+import sqs4s.api.responses.MessageSent
 import sqs4s.internal.aws4.common.RichRequest
 import sqs4s.internal.models.CReq
+import sqs4s.serialization.MessageEncoder
 
 import scala.concurrent.duration._
 import scala.language.postfixOps
-import scala.xml.Elem
+import scala.xml.{Elem, XML}
 
 case class SqsSetting(
   url: String,
@@ -19,26 +22,23 @@ case class SqsSetting(
   secretKey: String,
   region: String)
 
-trait Action
+trait Action[F[_], T] {
+  def runWith(setting: SqsSetting)(implicit client: Client[F]): F[T]
+}
 
-case class CreateQueue(
+case class CreateQueue[F[_]: Sync: Clock](
   name: String,
-  delaySeconds: Duration = DelaySeconds,
+  delay: Duration = DelaySeconds,
   maxMessageSize: Int = MaxMessageSize,
   messageRetentionPeriod: Duration = MessageRetentionPeriod)
-    extends Action {
+    extends Action[F, String] {
 
-  def run[F[_]: Sync: Clock](
-    setting: SqsSetting,
-    client: Client[F]
-  ): F[String] = {
+  def runWith(setting: SqsSetting)(implicit client: Client[F]): F[String] = {
     val attributes = List(
-      "DelaySeconds" -> delaySeconds.toSeconds.toString,
+      "DelaySeconds" -> delay.toSeconds.toString,
       "MaximumMessageSize" -> maxMessageSize.toString,
       "MessageRetentionPeriod" -> messageRetentionPeriod.toSeconds.toString
-    ).sortBy {
-      case (key, _) => key
-    }
+    )
 
     val queries = List(
       "Action" -> "CreateQueue",
@@ -79,12 +79,11 @@ case class CreateQueue(
       )
       resp <- client
         .expectOr[Elem](authed) {
-          case resp if resp.status == Status.Forbidden =>
+          case resp if !resp.status.isSuccess =>
             for {
               bytes <- resp.body.compile.toChunk
-              str = new String(bytes.toArray)
-              _ = println(s"code: ${resp.status}, response: $str")
-            } yield new Exception(s"code: ${resp.status}, response: $str")
+              xml <- Sync[F].delay(XML.loadString(new String(bytes.toArray)))
+            } yield SqsError.fromXml(resp.status, xml)
         }
         .map(xml => (xml \\ "QueueUrl").text)
     } yield resp
@@ -99,4 +98,67 @@ object CreateQueue {
   }
 }
 
-case class SendMessage[T](message: T)
+//TODO: Return MessageSent instead of String
+case class SendMessage[F[_]: Sync: Clock, T](
+  message: T,
+  queueUrl: String,
+  attributes: Map[String, String] = Map.empty,
+  delay: Option[Duration] = None,
+  deduplicationId: Option[String] = None,
+  groupId: Option[String] = None
+)(implicit encoder: MessageEncoder[F, T, String, String])
+    extends Action[F, String] {
+
+  def runWith(setting: SqsSetting)(implicit client: Client[F]): F[String] = {
+    val paramsF = encoder.encode(message).map { msg =>
+      val queries = List(
+        "Action" -> "SendMessage",
+        "DelaySeconds" -> delay.map(_.toSeconds).getOrElse(0L).toString,
+        "MessageBody" -> msg,
+        "Version" -> "2012-11-05"
+      )
+
+      (attributes.zipWithIndex.toList
+        .flatMap {
+          case ((key, value), index) =>
+            List(
+              s"Attribute.${index + 1}.Name" -> key,
+              s"Attribute.${index + 1}.Value" -> value
+            )
+        } ++ queries).sortBy {
+        case (key, _) => key
+      }
+    }
+
+    for {
+      params <- paramsF
+      uri <- Sync[F].fromEither(Uri.fromString(queueUrl))
+      uriWithQueries = params.foldLeft(uri) {
+        case (u, (key, value)) =>
+          u.withQueryParam(key, value)
+      }
+      get <- Request[F](
+        method = Method.POST,
+        uri = uriWithQueries
+      ).putHostHeader(uriWithQueries)
+        .putExpiresHeader[F]()
+        .flatMap(_.putXAmzDateHeader[F])
+      creq = CReq[F](get)
+      authed <- creq.toAuthorizedRequest(
+        setting.accessKey,
+        setting.secretKey,
+        setting.region,
+        "sqs"
+      )
+      resp <- client
+        .expectOr[Elem](authed) {
+          case resp if !resp.status.isSuccess =>
+            for {
+              bytes <- resp.body.compile.toChunk
+              xml <- Sync[F].delay(XML.loadString(new String(bytes.toArray)))
+            } yield SqsError.fromXml(resp.status, xml)
+        }
+        .map(xml => (xml \\ "MessageId").text)
+    } yield resp
+  }
+}
