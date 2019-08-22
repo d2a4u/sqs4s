@@ -5,7 +5,7 @@ import java.time.Instant
 import cats.effect.{Clock, IO}
 import cats.implicits._
 import org.http4s.client.blaze.BlazeClientBuilder
-import sqs4s.api.{SendMessage, SqsSetting}
+import sqs4s.api.{MessageSent, SendMessage, SqsSetting}
 import sqs4s.internal.aws4.IOSpec
 import sqs4s.serialization.MessageEncoder
 
@@ -46,6 +46,6 @@ class SendMessageSpec extends IOSpec {
       }
       .unsafeRunSync()
     println(created)
-    created shouldBe a[String]
+    created shouldBe a[MessageSent]
   }
 }
