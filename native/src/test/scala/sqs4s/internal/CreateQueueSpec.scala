@@ -4,11 +4,13 @@ import java.time.Instant
 
 import cats.effect.{Clock, IO}
 import org.http4s.client.blaze.BlazeClientBuilder
+import org.scalatest.Ignore
 import sqs4s.api.{CreateQueue, SqsSetting}
 import sqs4s.internal.aws4.IOSpec
 
 import scala.concurrent.duration.TimeUnit
 
+@Ignore
 class CreateQueueSpec extends IOSpec {
   override implicit lazy val testClock: Clock[IO] = new Clock[IO] {
     def realTime(unit: TimeUnit): IO[Long] = IO.delay {

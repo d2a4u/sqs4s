@@ -1,16 +1,19 @@
 package sqs4s.internal
 
 import java.time.Instant
+import java.util.concurrent.TimeUnit
 
 import cats.effect.{Clock, IO}
 import cats.implicits._
+import org.scalatest._
 import org.http4s.client.blaze.BlazeClientBuilder
 import sqs4s.api.{MessageSent, SendMessage, SqsSetting}
 import sqs4s.internal.aws4.IOSpec
 import sqs4s.serialization.MessageEncoder
 
-import scala.concurrent.duration.TimeUnit
+import scala.concurrent.duration._
 
+@Ignore
 class SendMessageSpec extends IOSpec {
   override implicit lazy val testClock: Clock[IO] = new Clock[IO] {
     def realTime(unit: TimeUnit): IO[Long] = IO.delay {
@@ -41,11 +44,13 @@ class SendMessageSpec extends IOSpec {
       .use { implicit client =>
         SendMessage[IO, String](
           "test",
-          s"https://sqs.eu-west-1.amazonaws.com/$awsAccountId/test"
+          s"https://sqs.eu-west-1.amazonaws.com/$awsAccountId/test",
+          Map("foo" -> "1"),
+          Some(1.second),
+          None
         ).runWith(setting)
       }
       .unsafeRunSync()
-    println(created)
     created shouldBe a[MessageSent]
   }
 }
