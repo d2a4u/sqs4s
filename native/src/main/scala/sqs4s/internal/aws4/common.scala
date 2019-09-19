@@ -15,7 +15,7 @@ import javax.crypto.spec.SecretKeySpec
 import javax.xml.bind.DatatypeConverter
 import org.http4s.{Header, Request, Uri}
 
-object common {
+private[sqs4s] object common {
 
   val IsoDateTimeFormat = "yyyyMMdd'T'HHmmss'Z'"
   val Algo = "HmacSHA256"

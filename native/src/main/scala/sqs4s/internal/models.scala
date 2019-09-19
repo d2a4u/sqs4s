@@ -14,10 +14,10 @@ import org.http4s.{Headers, Method, Query, Request, Uri}
 
 import scala.language.postfixOps
 
-object models {
+private[sqs4s] object models {
   import aws4.common._
 
-  case class CQuery(query: Query) {
+  final case class CQuery(query: Query) {
     private def urlEncode(str: String): String = {
       URLEncoder
         .encode(str, StandardCharsets.UTF_8.name())
@@ -38,7 +38,7 @@ object models {
         .mkString("&")
   }
 
-  case class CHeaders(headers: Headers, method: Method) {
+  final case class CHeaders(headers: Headers, method: Method) {
     val canonical: List[(String, String)] = {
       val kvs = headers.toList.map(h => (h.name.value, h.value))
 
@@ -87,7 +87,7 @@ object models {
     }
   }
 
-  case class SHeaders(cHeaders: CHeaders) {
+  final case class SHeaders(cHeaders: CHeaders) {
     val value: String =
       cHeaders.canonical
         .map {
@@ -96,7 +96,7 @@ object models {
         .mkString(";")
   }
 
-  case class CReq[F[_]: Sync: Clock](request: Request[F]) {
+  final case class CReq[F[_]: Sync: Clock](request: Request[F]) {
     lazy val uri: Uri = request.uri
     lazy val method: Method = request.method
     lazy val path: String = uri.path
