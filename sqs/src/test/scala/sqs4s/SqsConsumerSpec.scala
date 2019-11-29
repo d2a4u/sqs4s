@@ -8,12 +8,14 @@ import com.danielasfregola.randomdatagenerator.RandomDataGenerator._
 import fs2._
 import javax.jms.{BytesMessage, Session, TextMessage}
 import org.elasticmq.rest.sqs.{SQSRestServer, SQSRestServerBuilder}
-import org.scalatest.{BeforeAndAfterAll, FlatSpec, Matchers}
+import org.scalatest.BeforeAndAfterAll
 import sqs4s.serialization.instances._
 
 import scala.concurrent.ExecutionContext.global
+import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.matchers.should.Matchers
 
-class SqsConsumerSpec extends FlatSpec with Matchers with BeforeAndAfterAll {
+class SqsConsumerSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll {
 
   implicit val timer: Timer[IO] = IO.timer(global)
   implicit val cs: ContextShift[IO] = IO.contextShift(global)

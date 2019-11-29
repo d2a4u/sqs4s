@@ -8,15 +8,17 @@ import com.danielasfregola.randomdatagenerator.RandomDataGenerator._
 import fs2._
 import javax.jms.{BytesMessage, Session, TextMessage}
 import org.elasticmq.rest.sqs.{SQSRestServer, SQSRestServerBuilder}
-import org.scalatest.{BeforeAndAfterAll, FlatSpec, Inspectors, Matchers}
+import org.scalatest.{BeforeAndAfterAll, Inspectors}
 import sqs4s.serialization.instances._
 
 import scala.collection.JavaConverters._
 import scala.concurrent.ExecutionContext.global
 import scala.concurrent.duration._
+import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.matchers.should.Matchers
 
 class SqsProducerSpec
-    extends FlatSpec
+    extends AnyFlatSpec
     with Matchers
     with BeforeAndAfterAll
     with Inspectors {
