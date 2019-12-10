@@ -1,7 +1,7 @@
 import sbt.Keys.organization
 import sbt.addCompilerPlugin
 
-val circeVersion = "0.11.1"
+val circeVersion = "0.11.2"
 val fs2Version = "1.0.5"
 
 val circe = Seq(
@@ -18,8 +18,8 @@ lazy val coreDependencies = Seq(
 
 lazy val sqsDependencies = Seq(
   "com.amazonaws" % "amazon-sqs-java-messaging-lib" % "1.0.8",
-  "com.danielasfregola" %% "random-data-generator" % "2.8" % "test",
-  "org.elasticmq" %% "elasticmq-rest-sqs" % "0.14.12" % "test"
+  "com.danielasfregola" %% "random-data-generator" % "2.7" % "test",
+  "org.elasticmq" %% "elasticmq-rest-sqs" % "0.14.15" % "test"
 )
 
 lazy val benchmarkDependencies = Seq(
