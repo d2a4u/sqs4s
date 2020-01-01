@@ -5,7 +5,8 @@ import java.time.Instant
 import cats.effect.{Clock, IO}
 import org.http4s.client.blaze.BlazeClientBuilder
 import org.scalatest.Ignore
-import sqs4s.api.{CreateQueue, SqsSetting}
+import sqs4s.api.SqsSetting
+import sqs4s.api.lo.CreateQueue
 import sqs4s.internal.aws4.IOSpec
 
 import scala.concurrent.duration.TimeUnit

@@ -1,37 +1,33 @@
-package sqs4s.api
+package sqs4s.api.lo
 
 import cats.effect.{Clock, Sync}
 import cats.implicits._
 import org.http4s.client.Client
 import org.http4s.scalaxml._
 import org.http4s.{Method, Request, Uri}
+import sqs4s.api.SqsSetting
 import sqs4s.api.errors.SqsError
 import sqs4s.internal.aws4.common._
 import sqs4s.internal.models.CReq
-import sqs4s.serialization.MessageDecoder
+import sqs4s.serialization.MessageEncoder
 
 import scala.concurrent.duration.Duration
 import scala.xml.{Elem, XML}
 
-case class MessageSent(
-  messageBodyMd5: String,
-  messageAttributesMd5: String,
-  messageId: String,
-  requestId: String)
-
-case class ReceiveMessage[F[_]: Sync: Clock, T](
+case class SendMessage[F[_]: Sync: Clock, T](
+  message: T,
   queueUrl: String,
   attributes: Map[String, String] = Map.empty,
   delay: Option[Duration] = None,
   dedupId: Option[String] = None,
   groupId: Option[String] = None
-)(implicit encoder: MessageDecoder[F, String, String, T])
-    extends Action[F, MessageSent] {
+)(implicit encoder: MessageEncoder[F, T, String, String])
+    extends Action[F, SendMessage.Result] {
 
   def runWith(
     setting: SqsSetting
   )(implicit client: Client[F]
-  ): F[MessageSent] = {
+  ): F[SendMessage.Result] = {
     val paramsF = encoder.encode(message).map { msg =>
       val queries = List(
         "Action" -> "SendMessage",
@@ -62,12 +58,10 @@ case class ReceiveMessage[F[_]: Sync: Clock, T](
         case (u, (key, value)) =>
           u.withQueryParam(key, value)
       }
-      get <- Request[F](
-        method = Method.POST,
-        uri = uriWithQueries
-      ).putHostHeader(uriWithQueries)
-        .putExpiresHeader[F]()
-        .flatMap(_.putXAmzDateHeader[F])
+      get <- Request[F](method = Method.POST, uri = uriWithQueries)
+        .withHostHeader(uriWithQueries)
+        .withExpiresHeaderF[F]()
+        .flatMap(_.withXAmzDateHeaderF[F])
       creq = CReq[F](get)
       authed <- creq.toAuthorizedRequest(
         setting.accessKey,
@@ -83,18 +77,21 @@ case class ReceiveMessage[F[_]: Sync: Clock, T](
               xml <- Sync[F].delay(XML.loadString(new String(bytes.toArray)))
             } yield SqsError.fromXml(resp.status, xml)
         }
-        .map(xml => {
+        .map { xml =>
           val md5MsgBody = (xml \\ "MD5OfMessageBody").text
           val md5MsgAttr = (xml \\ "MD5OfMessageAttributes").text
           val mid = (xml \\ "MessageId").text
           val rid = (xml \\ "RequestId").text
-          MessageSent(
-            md5MsgBody,
-            md5MsgAttr,
-            mid,
-            rid
-          )
-        })
+          SendMessage.Result(md5MsgBody, md5MsgAttr, mid, rid)
+        }
     } yield resp
   }
+}
+
+object SendMessage {
+  case class Result(
+    messageBodyMd5: String,
+    messageAttributesMd5: String,
+    messageId: String,
+    requestId: String)
 }

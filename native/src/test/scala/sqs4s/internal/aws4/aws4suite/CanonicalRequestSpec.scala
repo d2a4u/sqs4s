@@ -76,9 +76,7 @@ class CanonicalRequestSpec extends IOSpec {
       )
     )
 
-    CReq[IO](req).value.unsafeRunSync() shouldEqual expect(
-      "get-unreserved"
-    )
+    CReq[IO](req).value.unsafeRunSync() shouldEqual expect("get-unreserved")
   }
 
   "get utf8" should "be transformed into canonical request correctly" in {
@@ -91,9 +89,7 @@ class CanonicalRequestSpec extends IOSpec {
       )
     )
 
-    CReq[IO](req).value.unsafeRunSync() shouldEqual expect(
-      "get-utf8"
-    )
+    CReq[IO](req).value.unsafeRunSync() shouldEqual expect("get-utf8")
   }
 
   "get vanilla" should "be transformed into canonical request correctly" in {
@@ -106,9 +102,7 @@ class CanonicalRequestSpec extends IOSpec {
       )
     )
 
-    CReq[IO](req).value.unsafeRunSync() shouldEqual expect(
-      "get-vanilla"
-    )
+    CReq[IO](req).value.unsafeRunSync() shouldEqual expect("get-vanilla")
   }
 
   "get vanilla empty query key" should "be transformed into canonical request correctly" in {
@@ -136,9 +130,7 @@ class CanonicalRequestSpec extends IOSpec {
       )
     )
 
-    CReq[IO](req).value.unsafeRunSync() shouldEqual expect(
-      "get-vanilla-query"
-    )
+    CReq[IO](req).value.unsafeRunSync() shouldEqual expect("get-vanilla-query")
   }
 
   "get vanilla query order key" should "be transformed into canonical request correctly" in {
@@ -328,9 +320,7 @@ class CanonicalRequestSpec extends IOSpec {
       )
     )
 
-    CReq[IO](req).value.unsafeRunSync() shouldEqual expect(
-      "post-vanilla"
-    )
+    CReq[IO](req).value.unsafeRunSync() shouldEqual expect("post-vanilla")
   }
 
   "post vanilla empty query value" should "be transformed into canonical request correctly" in {
@@ -358,9 +348,7 @@ class CanonicalRequestSpec extends IOSpec {
       )
     )
 
-    CReq[IO](req).value.unsafeRunSync() shouldEqual expect(
-      "post-vanilla-query"
-    )
+    CReq[IO](req).value.unsafeRunSync() shouldEqual expect("post-vanilla-query")
   }
 
   "post x www form urlencoded" should "be transformed into canonical request correctly" in {

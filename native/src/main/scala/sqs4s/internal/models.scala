@@ -143,12 +143,7 @@ private[sqs4s] object models {
           val now = Instant.ofEpochMilli(millis)
           LocalDateTime.ofInstant(now, ZoneOffset.UTC)
         }
-        sig <- sign(
-          secretKey,
-          region,
-          service,
-          ts
-        )
+        sig <- sign(secretKey, region, service, ts)
         tk <- token(
           sig,
           signedHeaders,

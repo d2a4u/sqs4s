@@ -75,9 +75,7 @@ class SqsProducerSpec
     val events = random[Event](10)
     producer
       .use(
-        _.multiple[Event, String, TextMessage](
-          Stream.emits[IO, Event](events)
-        ).compile.toList
+        _.multiple[Event, String, TextMessage](Stream.emits[IO, Event](events)).compile.toList
       )
       .unsafeRunSync()
       .length shouldEqual 10

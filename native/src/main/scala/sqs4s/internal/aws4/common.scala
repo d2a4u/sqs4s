@@ -76,9 +76,7 @@ private[sqs4s] object common {
     date: LocalDate
   ): F[Array[Byte]] =
     for {
-      date <- Sync[F].delay(
-        date.format(DateTimeFormatter.BASIC_ISO_DATE)
-      )
+      date <- Sync[F].delay(date.format(DateTimeFormatter.BASIC_ISO_DATE))
       signedSecret = s"AWS4$secretKey".getBytes(StandardCharsets.UTF_8)
       signedDate <- hmacSha256[F](signedSecret, date)
       signedRegion <- hmacSha256[F](signedDate, region)
@@ -115,12 +113,12 @@ private[sqs4s] object common {
       }
 
   implicit class RichRequest[F[_]](request: Request[F]) {
-    def putHostHeader(uri: Uri): Request[F] =
+    def withHostHeader(uri: Uri): Request[F] =
       uri.host
         .map(h => request.putHeaders(Header(Host, h.value)))
         .getOrElse(request)
 
-    def putExpiresHeader[G[x] >: F[x]: Sync: Clock](
+    def withExpiresHeaderF[G[x] >: F[x]: Sync: Clock](
       seconds: Long = 15 * 60
     ): G[Request[F]] =
       for {
@@ -133,12 +131,10 @@ private[sqs4s] object common {
             .format(fmt)
         }
       } yield {
-        request.putHeaders(
-          Header(Expires, expires)
-        )
+        request.putHeaders(Header(Expires, expires))
       }
 
-    def putXAmzDateHeader[G[x] >: F[x]: Sync: Clock]: G[Request[F]] =
+    def withXAmzDateHeaderF[G[x] >: F[x]: Sync: Clock]: G[Request[F]] =
       for {
         millis <- Clock[G].realTime(TimeUnit.MILLISECONDS)
         ts <- Sync[G].delay {
@@ -147,9 +143,7 @@ private[sqs4s] object common {
           LocalDateTime.ofInstant(now, ZoneOffset.UTC).format(fmt)
         }
       } yield {
-        request.putHeaders(
-          Header(XAmzDate, ts)
-        )
+        request.putHeaders(Header(XAmzDate, ts))
       }
   }
 }

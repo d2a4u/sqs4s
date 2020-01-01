@@ -1,14 +1,15 @@
-package sqs4s.api
+package sqs4s.api.lo
 
 import cats.effect.{Clock, Sync}
 import cats.implicits._
 import org.http4s.client.Client
 import org.http4s.scalaxml._
 import org.http4s.{Method, Request, Uri}
-import sqs4s.api.CreateQueue.defaults._
+import sqs4s.api.SqsSetting
 import sqs4s.api.errors.SqsError
 import sqs4s.internal.aws4.common._
 import sqs4s.internal.models.CReq
+import CreateQueue.defaults._
 
 import scala.concurrent.duration._
 import scala.xml.{Elem, XML}
@@ -51,12 +52,10 @@ case class CreateQueue[F[_]: Sync: Clock](
         case (u, (key, value)) =>
           u.withQueryParam(key, value)
       }
-      get <- Request[F](
-        method = Method.GET,
-        uri = uriWithQueries
-      ).putHostHeader(uriWithQueries)
-        .putExpiresHeader[F]()
-        .flatMap(_.putXAmzDateHeader[F])
+      get <- Request[F](method = Method.GET, uri = uriWithQueries)
+        .withHostHeader(uriWithQueries)
+        .withExpiresHeaderF[F]()
+        .flatMap(_.withXAmzDateHeaderF[F])
       creq = CReq[F](get)
       authed <- creq.toAuthorizedRequest(
         setting.accessKey,

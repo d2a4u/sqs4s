@@ -1,5 +1,6 @@
 package sqs4s.api
 
+import cats.Show
 import cats.implicits._
 import org.http4s.Status
 
@@ -31,6 +32,8 @@ object errors {
   }
 
   object SqsError {
+    implicit val show: Show[SqsError] = Show.show[SqsError](_.getMessage)
+
     def fromXml(status: Status, xml: Elem): SqsError = {
       (
         (xml \\ "Type").headOption.map(_.text),
