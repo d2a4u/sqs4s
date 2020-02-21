@@ -13,7 +13,7 @@ val circe = Seq(
 lazy val coreDependencies = Seq(
   "co.fs2" %% "fs2-core" % fs2Version,
   "javax.xml.bind" % "jaxb-api" % "2.4.0-b180830.0359",
-  "org.scalatest" %% "scalatest" % "3.0.8" % "test"
+  "org.scalatest" %% "scalatest" % "3.1.1" % "test"
 ) ++ circe
 
 lazy val sqsDependencies = Seq(
