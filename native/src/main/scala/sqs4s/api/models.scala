@@ -1,7 +1,7 @@
 package sqs4s.api
 
-case class SqsSetting(
-  url: String,
-  accessKey: String,
-  secretKey: String,
-  region: String)
+import org.http4s.Uri
+
+case class SqsSetting(url: Uri, auth: AwsAuth)
+
+case class AwsAuth(accessKey: String, secretKey: String, region: String)

@@ -14,7 +14,7 @@ import sqs4s.serialization.MessageDecoder
 import scala.xml.{Elem, XML}
 
 case class ReceiveMessage[F[_]: Sync: Clock, T](
-  queueUrl: String,
+  queue: Uri,
   maxNumberOfMessages: Int = 1,
   visibilityTimeout: Int = 15,
   attributes: Map[String, String] = Map.empty,
@@ -48,24 +48,9 @@ case class ReceiveMessage[F[_]: Sync: Clock, T](
     }
 
     for {
-      uri <- Sync[F].fromEither(Uri.fromString(queueUrl))
-      uriWithQueries = params.foldLeft(uri) {
-        case (u, (key, value)) =>
-          u.withQueryParam(key, value)
-      }
-      get <- Request[F](method = Method.POST, uri = uriWithQueries)
-        .withHostHeader(uriWithQueries)
-        .withExpiresHeaderF[F]()
-        .flatMap(_.withXAmzDateHeaderF[F])
-      creq = CReq[F](get)
-      authed <- creq.toAuthorizedRequest(
-        setting.accessKey,
-        setting.secretKey,
-        setting.region,
-        "sqs"
-      )
+      req <- SignedRequest.post(queue, params, setting.auth).render
       resp <- client
-        .expectOr[Elem](authed) {
+        .expectOr[Elem](req) {
           case resp if !resp.status.isSuccess =>
             for {
               bytes <- resp.body.compile.toChunk

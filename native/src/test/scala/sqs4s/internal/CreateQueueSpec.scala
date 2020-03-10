@@ -4,8 +4,9 @@ import java.time.Instant
 
 import cats.effect.{Clock, IO}
 import org.http4s.client.blaze.BlazeClientBuilder
+import org.http4s.Uri
 import org.scalatest.Ignore
-import sqs4s.api.SqsSetting
+import sqs4s.api.{AwsAuth, SqsSetting}
 import sqs4s.api.lo.CreateQueue
 import sqs4s.internal.aws4.IOSpec
 
@@ -26,10 +27,8 @@ class CreateQueueSpec extends IOSpec {
 
   "CreateQueue" should "create queue when run" in {
     val setting = SqsSetting(
-      "https://sqs.eu-west-1.amazonaws.com/",
-      accessKey,
-      secretKey,
-      "eu-west-1"
+      Uri.unsafeFromString("https://sqs.eu-west-1.amazonaws.com/"),
+      AwsAuth(accessKey, secretKey, "eu-west-1")
     )
 
     val created = BlazeClientBuilder[IO](ec).resource

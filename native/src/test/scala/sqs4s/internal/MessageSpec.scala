@@ -6,6 +6,7 @@ import java.util.concurrent.TimeUnit
 import fs2._
 import cats.effect.{Clock, IO}
 import cats.implicits._
+import org.http4s.Uri
 import org.http4s.client.blaze.BlazeClientBuilder
 import sqs4s.api._
 import sqs4s.api.lo.{ReceiveMessage, SendMessage}
@@ -26,17 +27,17 @@ class MessageSpec extends IOSpec {
   val accessKey = sys.env("ACCESS_KEY")
   val secretKey = sys.env("SECRET_KEY")
   val awsAccountId = sys.env("AWS_ACCOUNT_ID")
-  val queue = s"https://sqs.eu-west-1.amazonaws.com/$awsAccountId/test"
+  val queue = Uri.unsafeFromString(
+    s"https://sqs.eu-west-1.amazonaws.com/$awsAccountId/test"
+  )
   val message = "test"
 
   behavior.of("Message API")
 
   it should "send and receive message" in {
     val setting = SqsSetting(
-      "https://sqs.eu-west-1.amazonaws.com/",
-      accessKey,
-      secretKey,
-      "eu-west-1"
+      Uri.unsafeFromString("https://sqs.eu-west-1.amazonaws.com/"),
+      AwsAuth(accessKey, secretKey, "eu-west-1")
     )
 
     implicit val encoder = new MessageEncoder[IO, String, String, String] {

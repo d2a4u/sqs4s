@@ -2,13 +2,11 @@ package sqs4s.api.lo
 
 import cats.effect.{Clock, Sync}
 import cats.implicits._
+import org.http4s.Uri
 import org.http4s.client.Client
 import org.http4s.scalaxml._
-import org.http4s.{Method, Request, Uri}
 import sqs4s.api.SqsSetting
 import sqs4s.api.errors.SqsError
-import sqs4s.internal.aws4.common._
-import sqs4s.internal.models.CReq
 import sqs4s.serialization.MessageEncoder
 
 import scala.concurrent.duration.Duration
@@ -16,7 +14,7 @@ import scala.xml.{Elem, XML}
 
 case class SendMessage[F[_]: Sync: Clock, T](
   message: T,
-  queueUrl: String,
+  queue: Uri,
   attributes: Map[String, String] = Map.empty,
   delay: Option[Duration] = None,
   dedupId: Option[String] = None,
@@ -53,24 +51,9 @@ case class SendMessage[F[_]: Sync: Clock, T](
 
     for {
       params <- paramsF
-      uri <- Sync[F].fromEither(Uri.fromString(queueUrl))
-      uriWithQueries = params.foldLeft(uri) {
-        case (u, (key, value)) =>
-          u.withQueryParam(key, value)
-      }
-      get <- Request[F](method = Method.POST, uri = uriWithQueries)
-        .withHostHeader(uriWithQueries)
-        .withExpiresHeaderF[F]()
-        .flatMap(_.withXAmzDateHeaderF[F])
-      creq = CReq[F](get)
-      authed <- creq.toAuthorizedRequest(
-        setting.accessKey,
-        setting.secretKey,
-        setting.region,
-        "sqs"
-      )
+      req <- SignedRequest.post(queue, params, setting.auth).render
       resp <- client
-        .expectOr[Elem](authed) {
+        .expectOr[Elem](req) {
           case resp if !resp.status.isSuccess =>
             for {
               bytes <- resp.body.compile.toChunk

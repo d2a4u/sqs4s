@@ -4,12 +4,9 @@ import cats.effect.{Clock, Sync}
 import cats.implicits._
 import org.http4s.client.Client
 import org.http4s.scalaxml._
-import org.http4s.{Method, Request, Uri}
 import sqs4s.api.SqsSetting
 import sqs4s.api.errors.SqsError
-import sqs4s.internal.aws4.common._
-import sqs4s.internal.models.CReq
-import CreateQueue.defaults._
+import sqs4s.api.lo.CreateQueue.defaults._
 
 import scala.concurrent.duration._
 import scala.xml.{Elem, XML}
@@ -34,7 +31,7 @@ case class CreateQueue[F[_]: Sync: Clock](
       "Version" -> "2012-11-05"
     )
 
-    val queryQueries =
+    val params =
       (attributes.zipWithIndex
         .flatMap {
           case ((key, value), index) =>
@@ -47,24 +44,9 @@ case class CreateQueue[F[_]: Sync: Clock](
       }
 
     for {
-      uri <- Sync[F].fromEither(Uri.fromString(setting.url))
-      uriWithQueries = queryQueries.foldLeft(uri) {
-        case (u, (key, value)) =>
-          u.withQueryParam(key, value)
-      }
-      get <- Request[F](method = Method.GET, uri = uriWithQueries)
-        .withHostHeader(uriWithQueries)
-        .withExpiresHeaderF[F]()
-        .flatMap(_.withXAmzDateHeaderF[F])
-      creq = CReq[F](get)
-      authed <- creq.toAuthorizedRequest(
-        setting.accessKey,
-        setting.secretKey,
-        setting.region,
-        "sqs"
-      )
+      req <- SignedRequest.get[F](setting.url, params, setting.auth).render
       resp <- client
-        .expectOr[Elem](authed) {
+        .expectOr[Elem](req) {
           case resp if !resp.status.isSuccess =>
             for {
               bytes <- resp.body.compile.toChunk
