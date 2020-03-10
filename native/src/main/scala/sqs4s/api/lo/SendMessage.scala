@@ -6,11 +6,10 @@ import org.http4s.Uri
 import org.http4s.client.Client
 import org.http4s.scalaxml._
 import sqs4s.api.SqsSetting
-import sqs4s.api.errors.SqsError
 import sqs4s.serialization.MessageEncoder
 
 import scala.concurrent.duration.Duration
-import scala.xml.{Elem, XML}
+import scala.xml.Elem
 
 case class SendMessage[F[_]: Sync: Clock, T](
   message: T,
@@ -53,13 +52,7 @@ case class SendMessage[F[_]: Sync: Clock, T](
       params <- paramsF
       req <- SignedRequest.post(queue, params, setting.auth).render
       resp <- client
-        .expectOr[Elem](req) {
-          case resp if !resp.status.isSuccess =>
-            for {
-              bytes <- resp.body.compile.toChunk
-              xml <- Sync[F].delay(XML.loadString(new String(bytes.toArray)))
-            } yield SqsError.fromXml(resp.status, xml)
-        }
+        .expectOr[Elem](req)(handleError)
         .map { xml =>
           val md5MsgBody = (xml \\ "MD5OfMessageBody").text
           val md5MsgAttr = (xml \\ "MD5OfMessageAttributes").text

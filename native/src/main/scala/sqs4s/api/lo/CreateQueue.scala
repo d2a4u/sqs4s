@@ -5,11 +5,10 @@ import cats.implicits._
 import org.http4s.client.Client
 import org.http4s.scalaxml._
 import sqs4s.api.SqsSetting
-import sqs4s.api.errors.SqsError
 import sqs4s.api.lo.CreateQueue.defaults._
 
 import scala.concurrent.duration._
-import scala.xml.{Elem, XML}
+import scala.xml.Elem
 
 case class CreateQueue[F[_]: Sync: Clock](
   name: String,
@@ -46,13 +45,7 @@ case class CreateQueue[F[_]: Sync: Clock](
     for {
       req <- SignedRequest.get[F](setting.url, params, setting.auth).render
       resp <- client
-        .expectOr[Elem](req) {
-          case resp if !resp.status.isSuccess =>
-            for {
-              bytes <- resp.body.compile.toChunk
-              xml <- Sync[F].delay(XML.loadString(new String(bytes.toArray)))
-            } yield SqsError.fromXml(resp.status, xml)
-        }
+        .expectOr[Elem](req)(handleError)
         .map(xml => (xml \\ "QueueUrl").text)
     } yield resp
   }

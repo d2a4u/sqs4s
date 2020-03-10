@@ -2,16 +2,13 @@ package sqs4s.api.lo
 
 import cats.effect.{Clock, Sync}
 import cats.implicits._
+import org.http4s.Uri
 import org.http4s.client.Client
 import org.http4s.scalaxml._
-import org.http4s.{Method, Request, Uri}
 import sqs4s.api.SqsSetting
-import sqs4s.api.errors.SqsError
-import sqs4s.internal.aws4.common._
-import sqs4s.internal.models.CReq
 import sqs4s.serialization.MessageDecoder
 
-import scala.xml.{Elem, XML}
+import scala.xml.Elem
 
 case class ReceiveMessage[F[_]: Sync: Clock, T](
   queue: Uri,
@@ -50,13 +47,7 @@ case class ReceiveMessage[F[_]: Sync: Clock, T](
     for {
       req <- SignedRequest.post(queue, params, setting.auth).render
       resp <- client
-        .expectOr[Elem](req) {
-          case resp if !resp.status.isSuccess =>
-            for {
-              bytes <- resp.body.compile.toChunk
-              xml <- Sync[F].delay(XML.loadString(new String(bytes.toArray)))
-            } yield SqsError.fromXml(resp.status, xml)
-        }
+        .expectOr[Elem](req)(handleError)
         .flatMap { xml =>
           val msgs = xml \\ "Message"
           val seq = msgs.map { msg =>

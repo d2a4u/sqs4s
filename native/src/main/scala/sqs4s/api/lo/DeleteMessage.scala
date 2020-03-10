@@ -6,9 +6,8 @@ import org.http4s.Uri
 import org.http4s.client.Client
 import org.http4s.scalaxml._
 import sqs4s.api.SqsSetting
-import sqs4s.api.errors.SqsError
 
-import scala.xml.{Elem, XML}
+import scala.xml.Elem
 
 case class DeleteMessage[F[_]: Sync: Clock](queue: Uri, receiptHandle: String)
     extends Action[F, DeleteMessage.Result] {
@@ -28,13 +27,7 @@ case class DeleteMessage[F[_]: Sync: Clock](queue: Uri, receiptHandle: String)
     for {
       req <- SignedRequest.post(queue, params, setting.auth).render
       resp <- client
-        .expectOr[Elem](req) {
-          case resp if !resp.status.isSuccess =>
-            for {
-              bytes <- resp.body.compile.toChunk
-              xml <- Sync[F].delay(XML.loadString(new String(bytes.toArray)))
-            } yield SqsError.fromXml(resp.status, xml)
-        }
+        .expectOr[Elem](req)(handleError)
         .map { xml =>
           DeleteMessage.Result(xml \@ "RequestId")
         }
