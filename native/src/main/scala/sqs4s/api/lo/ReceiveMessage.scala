@@ -12,7 +12,7 @@ import scala.xml.Elem
 
 case class ReceiveMessage[F[_]: Sync: Clock, T](
   queue: Uri,
-  maxNumberOfMessages: Int = 1,
+  maxNumberOfMessages: Int = 1, // max 10 per sqs api doc
   visibilityTimeout: Int = 15,
   attributes: Map[String, String] = Map.empty,
   waitTimeSeconds: Option[Int] = None

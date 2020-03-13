@@ -7,9 +7,10 @@ import fs2._
 import cats.effect.{Clock, IO}
 import cats.implicits._
 import org.http4s.Uri
+import org.http4s.client.Client
 import org.http4s.client.blaze.BlazeClientBuilder
 import sqs4s.api._
-import sqs4s.api.lo.{ReceiveMessage, SendMessage}
+import sqs4s.api.lo.{DeleteMessage, ReceiveMessage, SendMessage}
 import sqs4s.internal.aws4.IOSpec
 import sqs4s.serialization.{MessageDecoder, MessageEncoder}
 
@@ -61,21 +62,42 @@ class MessageSpec extends IOSpec {
       }
       .unsafeRunSync()
 
+    type Result = Either[DeleteMessage.Result, Int]
+    val out: Pipe[IO, ReceiveMessage.Result[String], Result] =
+      _.map(_.body.toInt.asRight)
+    def ack(
+      implicit c: Client[IO]
+    ): Pipe[IO, ReceiveMessage.Result[String], Result] = _.flatMap { res =>
+      Stream.eval(
+        DeleteMessage[IO](queue, res.receiptHandle)
+          .runWith(setting)
+          .map(_.asLeft)
+      )
+    }
+
     val polled = Stream
       .resource(BlazeClientBuilder[IO](ec).resource)
       .flatMap { implicit client =>
-        val read = ReceiveMessage[IO, String](queue, 10).runWith(setting)
+        val reads = ReceiveMessage[IO, String](queue, 10).runWith(setting).map {
+          results =>
+            Stream
+              .fromIterator[IO, ReceiveMessage.Result[String]](
+                results.toIterator
+              )
+              .broadcastThrough(out, ack)
+        }
         Stream
-          .repeatEval(read)
-          .repeat
-          .metered(1.second)
+          .repeatEval(reads)
+          .metered(1.seconds)
           .interruptAfter(10.seconds)
+          .flatten
       }
       .compile
       .toList
       .unsafeRunSync()
-      .flatten
 
-    polled.map(_.body.toInt) should contain theSameElementsAs inputs
+    polled.collect {
+      case Right(i) => i
+    } should contain theSameElementsAs inputs
   }
 }
