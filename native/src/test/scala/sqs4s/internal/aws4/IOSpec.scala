@@ -16,7 +16,6 @@ trait IOSpec extends FlatSpecLike with Matchers {
   val testDateTime =
     LocalDateTime
       .parse(testTimeStamp, DateTimeFormatter.ofPattern("yyyyMMdd'T'HHmmss'Z'"))
-  Instant.now()
   implicit val timer: Timer[IO] = IO.timer(global)
   implicit val cs: ContextShift[IO] = IO.contextShift(global)
   implicit val ec: ExecutionContext = global

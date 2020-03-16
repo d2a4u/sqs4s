@@ -62,42 +62,26 @@ class MessageSpec extends IOSpec {
       }
       .unsafeRunSync()
 
-    type Result = Either[DeleteMessage.Result, Int]
-    val out: Pipe[IO, ReceiveMessage.Result[String], Result] =
-      _.map(_.body.toInt.asRight)
     def ack(
       implicit c: Client[IO]
-    ): Pipe[IO, ReceiveMessage.Result[String], Result] = _.flatMap { res =>
+    ): Pipe[IO, ReceiveMessage.Result[String], String] = _.flatMap { res =>
       Stream.eval(
         DeleteMessage[IO](queue, res.receiptHandle)
           .runWith(setting)
-          .map(_.asLeft)
+          .as(res.body)
       )
     }
 
-    val polled = Stream
-      .resource(BlazeClientBuilder[IO](ec).resource)
-      .flatMap { implicit client =>
-        val reads = ReceiveMessage[IO, String](queue, 10).runWith(setting).map {
-          results =>
-            Stream
-              .fromIterator[IO, ReceiveMessage.Result[String]](
-                results.toIterator
-              )
-              .broadcastThrough(out, ack)
-        }
-        Stream
-          .repeatEval(reads)
-          .metered(1.seconds)
-          .interruptAfter(10.seconds)
-          .flatten
+    val polled = BlazeClientBuilder[IO](ec).resource.use { implicit client =>
+      val read1 = ReceiveMessage[IO, String](queue, 10).runWith(setting)
+      val read = Stream.repeatEval(read1).flatMap { seq =>
+        Stream.fromIterator[IO, ReceiveMessage.Result[String]](seq.toIterator)
       }
-      .compile
-      .toList
-      .unsafeRunSync()
-
-    polled.collect {
-      case Right(i) => i
-    } should contain theSameElementsAs inputs
+      val result = read.broadcastThrough(ack)
+      result.take(10).compile.toList
+    }
+    val foo = polled.unsafeRunSync()
+    println(foo)
+    foo.map(_.toInt) should contain theSameElementsAs inputs
   }
 }

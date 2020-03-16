@@ -12,17 +12,17 @@ import scala.xml.Elem
 
 case class ReceiveMessage[F[_]: Sync: Clock, T](
   queue: Uri,
-  maxNumberOfMessages: Int = 1, // max 10 per sqs api doc
+  maxNumberOfMessages: Int = 10, // max 10 per sqs api doc
   visibilityTimeout: Int = 15,
   attributes: Map[String, String] = Map.empty,
   waitTimeSeconds: Option[Int] = None
 )(implicit decoder: MessageDecoder[F, String, String, T])
-    extends Action[F, Seq[ReceiveMessage.Result[T]]] {
+    extends Action[F, List[ReceiveMessage.Result[T]]] {
 
   def runWith(
     setting: SqsSetting
   )(implicit client: Client[F]
-  ): F[Seq[ReceiveMessage.Result[T]]] = {
+  ): F[List[ReceiveMessage.Result[T]]] = {
     val queries = List(
       "Action" -> "ReceiveMessage",
       "MaxNumberOfMessages" -> maxNumberOfMessages.toString,
@@ -50,7 +50,7 @@ case class ReceiveMessage[F[_]: Sync: Clock, T](
         .expectOr[Elem](req)(handleError)
         .flatMap { xml =>
           val msgs = xml \\ "Message"
-          val seq = msgs.map { msg =>
+          msgs.toList.traverse { msg =>
             val md5Body = (msg \ "MD5OfBody").text
             val raw = (msg \ "Body").text
             val attributes = (msg \ "Attribute")
@@ -62,7 +62,6 @@ case class ReceiveMessage[F[_]: Sync: Clock, T](
               ReceiveMessage.Result(mid, handle, t, raw, md5Body, attributes)
             }
           }
-          seq.toList.traverse(identity)
         }
     } yield resp
   }
