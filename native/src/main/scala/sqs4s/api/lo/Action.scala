@@ -4,13 +4,13 @@ import cats.implicits._
 import cats.effect.Sync
 import org.http4s.Response
 import org.http4s.client.Client
-import sqs4s.api.SqsSetting
+import sqs4s.api.SqsSettings
 import sqs4s.api.errors.SqsError
 
 import scala.xml.XML
 
 abstract class Action[F[_]: Sync, T] {
-  def runWith(setting: SqsSetting)(implicit client: Client[F]): F[T]
+  def runWith(setting: SqsSettings)(implicit client: Client[F]): F[T]
 
   val handleError: Response[F] => F[Throwable] = error => {
     for {

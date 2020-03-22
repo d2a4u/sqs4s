@@ -9,13 +9,6 @@ import io.circe.generic.auto._
 import io.circe.parser._
 import io.circe.syntax._
 import javax.jms.TextMessage
-import sqs4s.serialization.instances._
-import sqs4s.serialization.{
-  MessageDecoder,
-  MessageDeserializer,
-  MessageEncoder,
-  MessageSerializer
-}
 
 @SerialVersionUID(100L)
 case class Event(

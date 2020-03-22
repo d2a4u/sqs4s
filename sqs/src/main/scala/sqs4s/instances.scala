@@ -1,4 +1,4 @@
-package sqs4s.serialization
+package sqs4s
 
 import cats.Monad
 import cats.effect.Sync
@@ -6,8 +6,9 @@ import cats.implicits._
 import com.amazon.sqs.javamessaging.message.{SQSBytesMessage, SQSTextMessage}
 import fs2.{Chunk, Stream}
 import javax.jms.{BytesMessage, TextMessage}
+import sqs4s.serialization._
 
-trait decoders extends scala.AnyRef {
+trait decoders {
   implicit def strMsg[F[_]: Monad, T](
     implicit deserializer: MessageDeserializer[F, String, T]
   ) =
@@ -49,7 +50,7 @@ trait decoders extends scala.AnyRef {
   }
 }
 
-trait encoders extends scala.AnyRef {
+trait encoders {
   implicit def strMsg[F[_]: Monad, T](
     implicit serializer: MessageSerializer[F, T, String]
   ) =

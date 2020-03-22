@@ -2,27 +2,25 @@ package sqs4s.api.lo
 
 import cats.effect.{Clock, Sync}
 import cats.implicits._
-import org.http4s.Uri
 import org.http4s.client.Client
 import org.http4s.scalaxml._
-import sqs4s.api.SqsSetting
-import sqs4s.serialization.MessageEncoder
+import sqs4s.native.serialization.SqsSerializer
+import sqs4s.api.SqsSettings
 
 import scala.concurrent.duration.Duration
 import scala.xml.Elem
 
 case class SendMessage[F[_]: Sync: Clock, T](
   message: T,
-  queue: Uri,
   attributes: Map[String, String] = Map.empty,
   delay: Option[Duration] = None,
   dedupId: Option[String] = None,
   groupId: Option[String] = None
-)(implicit encoder: MessageEncoder[F, T, String, String])
+)(implicit encoder: SqsSerializer[F, T])
     extends Action[F, SendMessage.Result] {
 
   def runWith(
-    setting: SqsSetting
+    setting: SqsSettings
   )(implicit client: Client[F]
   ): F[SendMessage.Result] = {
     val paramsF = encoder.encode(message).map { msg =>
@@ -50,7 +48,7 @@ case class SendMessage[F[_]: Sync: Clock, T](
 
     for {
       params <- paramsF
-      req <- SignedRequest.post(queue, params, setting.auth).render
+      req <- SignedRequest.post(params, setting.queue, setting.auth).render
       resp <- client
         .expectOr[Elem](req)(handleError)
         .map { xml =>

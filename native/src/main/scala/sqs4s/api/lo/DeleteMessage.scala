@@ -2,18 +2,17 @@ package sqs4s.api.lo
 
 import cats.effect.{Clock, Sync}
 import cats.implicits._
-import org.http4s.Uri
 import org.http4s.client.Client
 import org.http4s.scalaxml._
-import sqs4s.api.SqsSetting
+import sqs4s.api.SqsSettings
 
 import scala.xml.Elem
 
-case class DeleteMessage[F[_]: Sync: Clock](queue: Uri, receiptHandle: String)
+case class DeleteMessage[F[_]: Sync: Clock](receiptHandle: String)
     extends Action[F, DeleteMessage.Result] {
 
   def runWith(
-    setting: SqsSetting
+    setting: SqsSettings
   )(implicit client: Client[F]
   ): F[DeleteMessage.Result] = {
     val params = List(
@@ -25,7 +24,7 @@ case class DeleteMessage[F[_]: Sync: Clock](queue: Uri, receiptHandle: String)
     }
 
     for {
-      req <- SignedRequest.post(queue, params, setting.auth).render
+      req <- SignedRequest.post(params, setting.queue, setting.auth).render
       resp <- client
         .expectOr[Elem](req)(handleError)
         .map { xml =>

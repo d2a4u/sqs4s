@@ -12,9 +12,7 @@ import org.http4s.client.blaze.BlazeClientBuilder
 import sqs4s.api._
 import sqs4s.api.lo.{DeleteMessage, ReceiveMessage, SendMessage}
 import sqs4s.internal.aws4.IOSpec
-import sqs4s.serialization.{MessageDecoder, MessageEncoder}
-
-import scala.concurrent.duration._
+import sqs4s.native.serialization.{SqsDeserializer, SqsSerializer}
 
 class MessageSpec extends IOSpec {
   override implicit lazy val testClock: Clock[IO] = new Clock[IO] {
@@ -36,52 +34,40 @@ class MessageSpec extends IOSpec {
   behavior.of("Message API")
 
   it should "send and receive message" in {
-    val setting = SqsSetting(
-      Uri.unsafeFromString("https://sqs.eu-west-1.amazonaws.com/"),
-      AwsAuth(accessKey, secretKey, "eu-west-1")
-    )
+    val setting = SqsSettings(queue, AwsAuth(accessKey, secretKey, "eu-west-1"))
 
-    implicit val encoder = new MessageEncoder[IO, String, String, String] {
-      override def to(u: String): IO[String] = u.pure[IO]
-
-      override def serialize(t: String): IO[String] = t.pure[IO]
+    implicit val desrlz = new SqsDeserializer[IO, Int] {
+      override def deserialize(u: String): IO[Int] = IO(u.toInt)
     }
 
-    implicit val decoder = new MessageDecoder[IO, String, String, String] {
-      override def from(m: String): IO[String] = m.pure[IO]
-
-      override def deserialize(t: String): IO[String] = t.pure[IO]
+    implicit val srlz = new SqsSerializer[IO, Int] {
+      override def serialize(t: Int): IO[String] = t.toString.pure[IO]
     }
 
     val inputs = 1 to 10
     BlazeClientBuilder[IO](ec).resource
       .use { implicit client =>
         inputs.toList
-          .map(i => SendMessage[IO, String](i.toString, queue))
+          .map(i => SendMessage[IO, Int](i))
           .traverse(_.runWith(setting))
       }
       .unsafeRunSync()
 
-    def ack(
-      implicit c: Client[IO]
-    ): Pipe[IO, ReceiveMessage.Result[String], String] = _.flatMap { res =>
-      Stream.eval(
-        DeleteMessage[IO](queue, res.receiptHandle)
+    def ack(implicit c: Client[IO]): Pipe[IO, ReceiveMessage.Result[Int], Int] =
+      _.flatMap { res =>
+        val r = DeleteMessage[IO](res.receiptHandle)
           .runWith(setting)
           .as(res.body)
-      )
-    }
+        Stream.eval(r)
+      }
 
     val polled = BlazeClientBuilder[IO](ec).resource.use { implicit client =>
-      val read1 = ReceiveMessage[IO, String](queue, 10).runWith(setting)
-      val read = Stream.repeatEval(read1).flatMap { seq =>
-        Stream.fromIterator[IO, ReceiveMessage.Result[String]](seq.toIterator)
-      }
+      val read1 = ReceiveMessage[IO, Int](10).runWith(setting)
+      val read = Stream.repeatEval(read1).flatMap(Stream.emits)
+
       val result = read.broadcastThrough(ack)
       result.take(10).compile.toList
     }
-    val foo = polled.unsafeRunSync()
-    println(foo)
-    foo.map(_.toInt) should contain theSameElementsAs inputs
+    polled.unsafeRunSync() should contain theSameElementsAs inputs
   }
 }

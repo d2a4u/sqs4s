@@ -2,25 +2,22 @@ package sqs4s.api.lo
 
 import cats.effect.{Clock, Sync}
 import cats.implicits._
-import org.http4s.Uri
 import org.http4s.client.Client
 import org.http4s.scalaxml._
-import sqs4s.api.SqsSetting
-import sqs4s.serialization.MessageDecoder
+import sqs4s.native.serialization.SqsDeserializer
+import sqs4s.api.SqsSettings
 
 import scala.xml.Elem
 
 case class ReceiveMessage[F[_]: Sync: Clock, T](
-  queue: Uri,
   maxNumberOfMessages: Int = 10, // max 10 per sqs api doc
   visibilityTimeout: Int = 15,
-  attributes: Map[String, String] = Map.empty,
   waitTimeSeconds: Option[Int] = None
-)(implicit decoder: MessageDecoder[F, String, String, T])
+)(implicit decoder: SqsDeserializer[F, T])
     extends Action[F, List[ReceiveMessage.Result[T]]] {
 
   def runWith(
-    setting: SqsSetting
+    setting: SqsSettings
   )(implicit client: Client[F]
   ): F[List[ReceiveMessage.Result[T]]] = {
     val queries = List(
@@ -29,23 +26,16 @@ case class ReceiveMessage[F[_]: Sync: Clock, T](
       "VisibilityTimeout" -> visibilityTimeout.toString,
       "AttributeName" -> "All",
       "Version" -> "2012-11-05"
-    ) ++ waitTimeSeconds.fold(List.empty[(String, String)]) { sec =>
-      List("WaitTimeSeconds" -> sec.toString)
+    ) ++ waitTimeSeconds.toList.map { sec =>
+      "WaitTimeSeconds" -> sec.toString
     }
 
-    val params = (attributes.zipWithIndex.toList
-      .flatMap {
-        case ((key, value), index) =>
-          List(
-            s"Attribute.${index + 1}.Name" -> key,
-            s"Attribute.${index + 1}.Value" -> value
-          )
-      } ++ queries).sortBy {
+    val params = queries.sortBy {
       case (key, _) => key
     }
 
     for {
-      req <- SignedRequest.post(queue, params, setting.auth).render
+      req <- SignedRequest.post(params, setting.queue, setting.auth).render
       resp <- client
         .expectOr[Elem](req)(handleError)
         .flatMap { xml =>

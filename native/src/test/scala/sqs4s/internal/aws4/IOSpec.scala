@@ -1,7 +1,7 @@
 package sqs4s.internal.aws4
 
 import java.time.format.DateTimeFormatter
-import java.time.{Instant, LocalDateTime, ZoneOffset}
+import java.time.{LocalDateTime, ZoneOffset}
 
 import cats.effect._
 import org.scalatest.{FlatSpecLike, Matchers}

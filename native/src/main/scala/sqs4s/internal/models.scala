@@ -18,7 +18,7 @@ private[sqs4s] object models {
   import aws4.common._
 
   final case class CQuery(query: Query) {
-    private def urlEncode(str: String): String = {
+    private def urlEncode[F[_]: Sync](str: String): F[String] = Sync[F].delay {
       URLEncoder
         .encode(str, StandardCharsets.UTF_8.name())
         .replaceAll("\\+", "%20")
@@ -29,13 +29,16 @@ private[sqs4s] object models {
         .replaceAll("\\%7E", "~")
     }
 
-    val value: String =
+    def value[F[_]: Sync]: F[String] =
       query.toList.sorted
-        .map {
+        .traverse {
           case (k, v) =>
-            urlEncode(k) + "=" + urlEncode(v.getOrElse(""))
+            for {
+              uk <- urlEncode[F](k)
+              uv <- urlEncode[F](v.getOrElse(""))
+            } yield uk + "=" + uv
         }
-        .mkString("&")
+        .map(_.mkString("&"))
   }
 
   final case class CHeaders(headers: Headers, method: Method) {
@@ -106,16 +109,14 @@ private[sqs4s] object models {
     lazy val hashedBody: F[String] = sha256HexDigest[F](request.body)
     lazy val signedHeaders: String = SHeaders(canonicalHeaders).value
 
-    lazy val value: F[String] = hashedBody.map { h =>
-      List(
-        method.name,
-        path,
-        canonicalQuery.value,
-        canonicalHeaders.value,
-        signedHeaders,
-        h
-      ).mkString(NewLine)
-    }
+    lazy val value: F[String] =
+      for {
+        h <- hashedBody
+        c <- canonicalQuery.value
+      } yield {
+        List(method.name, path, c, canonicalHeaders.value, signedHeaders, h)
+          .mkString(NewLine)
+      }
 
     def sign(
       secretKey: String,

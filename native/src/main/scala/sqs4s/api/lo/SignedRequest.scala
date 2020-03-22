@@ -8,9 +8,9 @@ import sqs4s.internal.aws4.common._
 import sqs4s.internal.models.CReq
 
 case class SignedRequest[F[_]: Sync: Clock](
-  url: Uri,
   params: List[(String, String)],
   request: Request[F],
+  url: Uri,
   auth: AwsAuth) {
   def render: F[Request[F]] = {
     for {
@@ -20,12 +20,12 @@ case class SignedRequest[F[_]: Sync: Clock](
             u.withQueryParam(key, value)
         }
         .pure[F]
-      post <- request
+      req <- request
         .withUri(uriWithQueries)
         .withHostHeader(uriWithQueries)
         .withExpiresHeaderF[F]()
         .flatMap(_.withXAmzDateHeaderF[F])
-      creq = CReq[F](post)
+      creq = CReq[F](req)
       authed <- creq
         .toAuthorizedRequest(auth.accessKey, auth.secretKey, auth.region, "sqs")
     } yield authed
@@ -34,16 +34,16 @@ case class SignedRequest[F[_]: Sync: Clock](
 
 object SignedRequest {
   def post[F[_]: Sync: Clock](
-    url: Uri,
     params: List[(String, String)],
+    url: Uri,
     auth: AwsAuth
   ) =
-    SignedRequest[F](url, params, Request[F](method = Method.POST), auth)
+    SignedRequest[F](params, Request[F](method = Method.POST), url, auth)
 
   def get[F[_]: Sync: Clock](
-    url: Uri,
     params: List[(String, String)],
+    url: Uri,
     auth: AwsAuth
   ) =
-    SignedRequest[F](url, params, Request[F](method = Method.GET), auth)
+    SignedRequest[F](params, Request[F](method = Method.GET), url, auth)
 }
