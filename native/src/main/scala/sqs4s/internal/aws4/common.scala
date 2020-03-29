@@ -134,11 +134,12 @@ private[sqs4s] object common {
         request.putHeaders(Header(Expires, expires))
       }
 
-    def withXAmzDateHeaderF[G[x] >: F[x]: Sync: Clock]: G[Request[F]] =
+    def withXAmzDateHeaderF[G[x] >: F[x]: Sync](
+      currentMillis: Long
+    ): G[Request[F]] =
       for {
-        millis <- Clock[G].realTime(TimeUnit.MILLISECONDS)
         ts <- Sync[G].delay {
-          val now = Instant.ofEpochMilli(millis)
+          val now = Instant.ofEpochMilli(currentMillis)
           val fmt = DateTimeFormatter.ofPattern(IsoDateTimeFormat)
           LocalDateTime.ofInstant(now, ZoneOffset.UTC).format(fmt)
         }

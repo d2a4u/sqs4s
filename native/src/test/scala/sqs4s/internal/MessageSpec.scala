@@ -20,7 +20,7 @@ class MessageSpec extends IOSpec {
       Instant.now().toEpochMilli
     }
 
-    def monotonic(unit: TimeUnit): IO[Long] = ???
+    def monotonic(unit: TimeUnit): IO[Long] = IO(0L)
   }
 
   val accessKey = sys.env("ACCESS_KEY")
@@ -29,7 +29,6 @@ class MessageSpec extends IOSpec {
   val queue = Uri.unsafeFromString(
     s"https://sqs.eu-west-1.amazonaws.com/$awsAccountId/test"
   )
-  val message = "test"
 
   behavior.of("Message API")
 
@@ -40,8 +39,8 @@ class MessageSpec extends IOSpec {
       override def deserialize(u: String): IO[Int] = IO(u.toInt)
     }
 
-    implicit val srlz = new SqsSerializer[IO, Int] {
-      override def serialize(t: Int): IO[String] = t.toString.pure[IO]
+    implicit val srlz = new SqsSerializer[Int] {
+      override def serialize(t: Int): String = t.toString
     }
 
     val inputs = 1 to 10

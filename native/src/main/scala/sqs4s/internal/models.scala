@@ -3,10 +3,11 @@ package sqs4s.internal
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
 import java.time._
-import java.util.concurrent.TimeUnit
 
 import cats.effect.{Clock, Sync}
 import cats.implicits._
+import io.chrisdavenport.log4cats.Logger
+import io.chrisdavenport.log4cats.slf4j.Slf4jLogger
 import org.http4s.Credentials.Token
 import org.http4s.headers.Authorization
 import org.http4s.util.CaseInsensitiveString
@@ -16,6 +17,7 @@ import scala.language.postfixOps
 
 private[sqs4s] object models {
   import aws4.common._
+  implicit def unsafeLogger[F[_]: Sync] = Slf4jLogger.getLogger[F]
 
   final case class CQuery(query: Query) {
     private def urlEncode[F[_]: Sync](str: String): F[String] = Sync[F].delay {
@@ -130,18 +132,20 @@ private[sqs4s] object models {
         sts <- stringToSign[F](region, service, canonicalReq, timestamp)
         sha <- hmacSha256[F](key, sts)
         signed <- hexDigest(sha)
+        _ <- Logger[F].debug("Canonical request:\n" + canonicalReq)
+        _ <- Logger[F].debug("String to sign:\n" + sts)
       } yield signed
 
     def toAuthorizedRequest(
       accessKey: String,
       secretKey: String,
       region: String,
-      service: String
+      service: String,
+      currentMillis: Long
     ): F[Request[F]] =
       for {
-        millis <- Clock[F].realTime(TimeUnit.MILLISECONDS)
         ts <- Sync[F].delay {
-          val now = Instant.ofEpochMilli(millis)
+          val now = Instant.ofEpochMilli(currentMillis)
           LocalDateTime.ofInstant(now, ZoneOffset.UTC)
         }
         sig <- sign(secretKey, region, service, ts)

@@ -1,5 +1,7 @@
 package sqs4s.api.lo
 
+import java.util.concurrent.TimeUnit
+
 import cats.effect.{Clock, Sync}
 import cats.implicits._
 import org.http4s.{Method, Request, Uri}
@@ -14,6 +16,7 @@ case class SignedRequest[F[_]: Sync: Clock](
   auth: AwsAuth) {
   def render: F[Request[F]] = {
     for {
+      millis <- Clock[F].realTime(TimeUnit.MILLISECONDS)
       uriWithQueries <- params
         .foldLeft(url) {
           case (u, (key, value)) =>
@@ -24,10 +27,16 @@ case class SignedRequest[F[_]: Sync: Clock](
         .withUri(uriWithQueries)
         .withHostHeader(uriWithQueries)
         .withExpiresHeaderF[F]()
-        .flatMap(_.withXAmzDateHeaderF[F])
+        .flatMap(_.withXAmzDateHeaderF[F](millis))
       creq = CReq[F](req)
       authed <- creq
-        .toAuthorizedRequest(auth.accessKey, auth.secretKey, auth.region, "sqs")
+        .toAuthorizedRequest(
+          auth.accessKey,
+          auth.secretKey,
+          auth.region,
+          "sqs",
+          millis
+        )
     } yield authed
   }
 }

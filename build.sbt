@@ -14,7 +14,8 @@ val circe = Seq(
 lazy val coreDependencies = Seq(
   "co.fs2" %% "fs2-core" % fs2Version,
   "javax.xml.bind" % "jaxb-api" % "2.4.0-b180830.0359",
-  "org.scalatest" %% "scalatest" % "3.0.8" % "test"
+  "org.scalatest" %% "scalatest" % "3.0.8" % Test,
+  "org.scalacheck" %% "scalacheck" % "1.14.0" % Test
 ) ++ circe
 
 lazy val sqsDependencies = Seq(
@@ -26,8 +27,10 @@ lazy val sqsDependencies = Seq(
 lazy val nativeDependencies = Seq(
   "org.http4s" %% "http4s-blaze-client" % http4sVersion,
   "org.http4s" %% "http4s-scala-xml" % http4sVersion,
-  "org.scala-lang.modules" %% "scala-parser-combinators" % "1.1.2"
-)
+  "org.scala-lang.modules" %% "scala-parser-combinators" % "1.1.2",
+  "io.chrisdavenport" %% "log4cats-slf4j" % "1.0.1",
+  "ch.qos.logback" % "logback-classic" % "1.2.3" % Test,
+) ++ circe
 
 lazy val benchmarkDependencies = Seq(
   "org.slf4j" % "log4j-over-slf4j" % "1.7.28" % "test",

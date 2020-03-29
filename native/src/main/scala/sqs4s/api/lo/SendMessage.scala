@@ -16,17 +16,43 @@ case class SendMessage[F[_]: Sync: Clock, T](
   delay: Option[Duration] = None,
   dedupId: Option[String] = None,
   groupId: Option[String] = None
-)(implicit encoder: SqsSerializer[F, T])
+)(implicit serializer: SqsSerializer[T])
     extends Action[F, SendMessage.Result] {
 
-  def runWith(
-    setting: SqsSettings
-  )(implicit client: Client[F]
-  ): F[SendMessage.Result] = {
-    val paramsF = encoder.encode(message).map { msg =>
+  def sign(settings: SqsSettings) = {
+    val params = {
       val queries = List(
         "Action" -> "SendMessage",
-        "MessageBody" -> msg,
+        "MessageBody" -> serializer.serialize(message),
+        "Version" -> "2012-11-05"
+      ) ++ (
+        dedupId.map(ddid => List("MessageDeduplicationId" -> ddid)) |+|
+          groupId.map(gid => List("MessageGroupId" -> gid)) |+|
+          delay.map(d => List("DelaySeconds" -> d.toSeconds.toString))
+      ).getOrElse(List.empty)
+
+      (attributes.zipWithIndex.toList
+        .flatMap {
+          case ((key, value), index) =>
+            List(
+              s"Attribute.${index + 1}.Name" -> key,
+              s"Attribute.${index + 1}.Value" -> value
+            )
+        } ++ queries).sortBy {
+        case (key, _) => key
+      }
+    }
+
+    SignedRequest.post(params, settings.queue, settings.auth).render
+  }
+  def runWith(
+    settings: SqsSettings
+  )(implicit client: Client[F]
+  ): F[SendMessage.Result] = {
+    val params = {
+      val queries = List(
+        "Action" -> "SendMessage",
+        "MessageBody" -> serializer.serialize(message),
         "Version" -> "2012-11-05"
       ) ++ (
         dedupId.map(ddid => List("MessageDeduplicationId" -> ddid)) |+|
@@ -47,8 +73,7 @@ case class SendMessage[F[_]: Sync: Clock, T](
     }
 
     for {
-      params <- paramsF
-      req <- SignedRequest.post(params, setting.queue, setting.auth).render
+      req <- SignedRequest.post(params, settings.queue, settings.auth).render
       resp <- client
         .expectOr[Elem](req)(handleError)
         .map { xml =>

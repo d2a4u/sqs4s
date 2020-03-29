@@ -48,7 +48,7 @@ case class ReceiveMessage[F[_]: Sync: Clock, T](
               .toMap
             val mid = (msg \ "MessageId").text
             val handle = (msg \ "ReceiptHandle").text
-            decoder.decode(raw).map { t =>
+            decoder.deserialize(raw).map { t =>
               ReceiveMessage.Result(mid, handle, t, raw, md5Body, attributes)
             }
           }

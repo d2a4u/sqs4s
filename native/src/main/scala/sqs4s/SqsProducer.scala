@@ -28,7 +28,7 @@ trait SqsProducer[F[_], T] {
 }
 
 object SqsProducer {
-  def instance[F[_]: Sync: Clock: Client, T: SqsSerializer[F, ?]](
+  def instance[F[_]: Sync: Clock: Client, T: SqsSerializer](
     settings: SqsSettings
   ) = new SqsProducer[F, T] {
     override def produce(

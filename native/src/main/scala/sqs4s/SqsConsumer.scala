@@ -10,7 +10,14 @@ import sqs4s.native.serialization.SqsDeserializer
 
 trait SqsConsumer[F[_], T] {
   def consume(process: T => F[Unit]): F[Unit]
+  def consumeAsync(
+    maxConcurrent: Int,
+    batch: Int = 256
+  )(
+    process: T => F[Unit]
+  ): F[Unit]
   def dequeue(): Stream[F, T]
+  def dequeueAsync(maxConcurrent: Int, batch: Int = 256): Stream[F, T]
   def peek(number: Int): Stream[F, T]
 }
 
@@ -35,8 +42,38 @@ object SqsConsumer {
       read.broadcastThrough(ack(process)).compile.drain
     }
 
+    override def consumeAsync(
+      maxConcurrent: Int,
+      batch: Int = 256
+    )(
+      process: T => F[Unit]
+    ): F[Unit] = {
+      def ack(proc: T => F[Unit]): Pipe[F, ReceiveMessage.Result[T], Unit] =
+        _.mapAsync(maxConcurrent) { res =>
+          proc(res.body).flatMap { _ =>
+            DeleteMessage[F](res.receiptHandle)
+              .runWith(settings)
+              .as(())
+          }
+        }
+
+      Stream
+        .constant[F, ReceiveMessage[F, T]](
+          ReceiveMessage[F, T](
+            consumerSettings.maxRead,
+            consumerSettings.visibilityTimeout,
+            consumerSettings.waitTimeSeconds
+          ),
+          batch
+        )
+        .mapAsync(maxConcurrent)(_.runWith(settings))
+        .flatMap(Stream.emits)
+        .broadcastThrough(ack(process))
+        .compile
+        .drain
+    }
+
     override def dequeue(): Stream[F, T] = {
-      val read = Stream.repeatEval(read1).flatMap(Stream.emits)
       val delete: Pipe[F, ReceiveMessage.Result[T], T] =
         _.flatMap { res =>
           val r = DeleteMessage[F](res.receiptHandle)
@@ -44,7 +81,32 @@ object SqsConsumer {
             .as(res.body)
           Stream.eval(r)
         }
-      read.broadcastThrough(delete)
+      Stream.repeatEval(read1).flatMap(Stream.emits).broadcastThrough(delete)
+    }
+
+    override def dequeueAsync(
+      maxConcurrent: Int,
+      batch: Int = 256
+    ): Stream[F, T] = {
+      val delete: Pipe[F, ReceiveMessage.Result[T], T] =
+        _.mapAsync(maxConcurrent) { res =>
+          DeleteMessage[F](res.receiptHandle)
+            .runWith(settings)
+            .as(res.body)
+        }
+
+      Stream
+        .constant[F, ReceiveMessage[F, T]](
+          ReceiveMessage[F, T](
+            consumerSettings.maxRead,
+            consumerSettings.visibilityTimeout,
+            consumerSettings.waitTimeSeconds
+          ),
+          batch
+        )
+        .mapAsync(maxConcurrent)(_.runWith(settings))
+        .flatMap(Stream.emits)
+        .broadcastThrough(delete)
     }
 
     override def peek(number: Int): Stream[F, T] = {
@@ -60,5 +122,6 @@ object SqsConsumer {
         consumerSettings.visibilityTimeout,
         consumerSettings.waitTimeSeconds
       ).runWith(settings)
+
   }
 }
