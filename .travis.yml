@@ -4,13 +4,9 @@ services:
 - sqs4s
 jobs:
   include:
-    - stage: test_sqs
+    - stage: test
       script:
-        - sbt ++$TRAVIS_SCALA_VERSION clean update coverage sqs/test coverageReport
-      jdk: openjdk11
-    - stage: test_native
-      script:
-        - sbt ++$TRAVIS_SCALA_VERSION clean update coverage native/test coverageReport
+        - sbt ++$TRAVIS_SCALA_VERSION clean update coverage sqs/test native/test coverageReport
       jdk: openjdk11
 
 before_cache:
