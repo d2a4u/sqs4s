@@ -13,6 +13,7 @@ import org.scalatest.{BeforeAndAfterAll, FlatSpec, Inspectors, Matchers}
 import scala.collection.JavaConverters._
 import scala.concurrent.ExecutionContext.global
 import scala.concurrent.duration._
+import sqs4s.instances._
 
 class SqsProducerSpec
     extends FlatSpec

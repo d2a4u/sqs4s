@@ -9,12 +9,15 @@ import io.circe.generic.auto._
 import io.circe.parser._
 import io.circe.syntax._
 import javax.jms.TextMessage
+import sqs4s.serialization.{
+  MessageDecoder,
+  MessageDeserializer,
+  MessageEncoder,
+  MessageSerializer
+}
 
 @SerialVersionUID(100L)
-case class Event(
-  id: String,
-  name: String)
-    extends Serializable
+case class Event(id: String, name: String) extends Serializable
 
 object Event {
   implicit val serializerStr: MessageSerializer[IO, Event, String] =
@@ -56,7 +59,7 @@ object Event {
     }
 
   implicit val encoder: MessageEncoder[IO, Event, String, TextMessage] =
-    strMsg[IO, Event]
+    encoders.strMsg[IO, Event]
   implicit val decoder: MessageDecoder[IO, TextMessage, String, Event] =
-    strMsg[IO, Event]
+    decoders.strMsg[IO, Event]
 }
