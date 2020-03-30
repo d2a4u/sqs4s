@@ -62,7 +62,7 @@ class ClientSpec extends IOSpec {
   }
 
   it should "produce and consume messages" in {
-    val random = 100L
+    val random = 10L
     val input = TestMessage.arbStream(random)
 
     val outputF = BlazeClientBuilder[IO](ec)
