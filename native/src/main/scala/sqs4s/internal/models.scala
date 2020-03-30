@@ -12,11 +12,11 @@ import org.http4s.Credentials.Token
 import org.http4s.headers.Authorization
 import org.http4s.util.CaseInsensitiveString
 import org.http4s.{Headers, Method, Query, Request, Uri}
+import sqs4s.internal.aws4.common._
 
 import scala.language.postfixOps
 
 private[sqs4s] object models {
-  import aws4.common._
   implicit def unsafeLogger[F[_]: Sync] = Slf4jLogger.getLogger[F]
 
   final case class CQuery(query: Query) {
@@ -67,7 +67,9 @@ private[sqs4s] object models {
         }
 
       val duplicationGuarded: List[(String, String)] => Map[String, String] =
-        _.groupBy(_._1).mapValues(_.map(_._2).mkString(","))
+        _.groupBy { case (key, _) => key }.mapValues(_.map {
+          case (_, value) => value
+        }.mkString(","))
 
       val multiLineGuarded: Map[String, String] => Map[String, String] =
         _.mapValues(_.replaceAll("\n +", ",").trim)
@@ -174,7 +176,10 @@ private[sqs4s] object models {
           "Credential" -> s"$accessKey/$scope",
           "SignedHeaders" -> signedHeaders,
           "Signature" -> signature
-        ).map(kv => s"${kv._1}=${kv._2}").mkString(", ")
+        ).map {
+            case (k, v) => s"$k=$v"
+          }
+          .mkString(", ")
         Token(CaseInsensitiveString(AwsAlgo), tk)
       }
   }

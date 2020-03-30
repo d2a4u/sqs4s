@@ -25,6 +25,6 @@ trait IOSpec extends FlatSpecLike with Matchers {
         .toInstant(ZoneOffset.UTC)
         .toEpochMilli()
     }
-    def monotonic(unit: TimeUnit): IO[Long] = ???
+    def monotonic(unit: TimeUnit): IO[Long] = IO(0L)
   }
 }

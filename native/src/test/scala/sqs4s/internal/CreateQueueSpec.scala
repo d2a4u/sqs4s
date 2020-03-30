@@ -19,7 +19,7 @@ class CreateQueueSpec extends IOSpec {
       Instant.now().toEpochMilli
     }
 
-    def monotonic(unit: TimeUnit): IO[Long] = ???
+    def monotonic(unit: TimeUnit): IO[Long] = IO(0L)
   }
 
   val accessKey = sys.env("ACCESS_KEY")
@@ -27,7 +27,10 @@ class CreateQueueSpec extends IOSpec {
 
   val sqsEndpoint = Uri.unsafeFromString("https://sqs.eu-west-1.amazonaws.com/")
   "CreateQueue" should "create queue when run" in {
-    val setting = SqsSettings(null, AwsAuth(accessKey, secretKey, "eu-west-1"))
+    val setting = SqsSettings(
+      Uri.unsafeFromString(""),
+      AwsAuth(accessKey, secretKey, "eu-west-1")
+    )
 
     val created = BlazeClientBuilder[IO](ec).resource
       .use { implicit client =>

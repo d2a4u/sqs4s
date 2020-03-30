@@ -25,7 +25,7 @@ object SqsConsumer {
   def instance[F[_]: Concurrent: Clock: Client, T: SqsDeserializer[F, ?]](
     settings: SqsSettings,
     consumerSettings: ConsumerSettings = ConsumerSettings.default
-  ) = new SqsConsumer[F, T] {
+  ): SqsConsumer[F, T] = new SqsConsumer[F, T] {
 
     override def consume(process: T => F[Unit]): F[Unit] = {
       def ack(proc: T => F[Unit]): Pipe[F, ReceiveMessage.Result[T], Unit] =

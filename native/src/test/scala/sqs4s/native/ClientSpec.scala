@@ -10,7 +10,7 @@ import io.circe.{parser, _}
 import io.circe.syntax._
 import org.http4s.Uri
 import org.http4s.client.blaze.BlazeClientBuilder
-import org.scalacheck.{Arbitrary, Gen}
+import com.danielasfregola.randomdatagenerator.RandomDataGenerator._
 import sqs4s.api._
 import sqs4s.internal.aws4.IOSpec
 import sqs4s.native.serialization.{SqsDeserializer, SqsSerializer}
@@ -50,17 +50,8 @@ class ClientSpec extends IOSpec {
         t.asJson.noSpaces
     }
 
-    implicit val arb: Arbitrary[TestMessage] = {
-      val gen = for {
-        str <- Gen.alphaNumStr
-        int <- Gen.choose(Int.MinValue, Int.MaxValue)
-        bool <- Gen.oneOf(Seq(true, false))
-      } yield TestMessage(str, int, bool)
-      Arbitrary(gen)
-    }
-
-    def arbStream(n: Int): Stream[IO, TestMessage] = {
-      val msg = arb.arbitrary.sample.get
+    def arbStream(n: Long): Stream[IO, TestMessage] = {
+      val msg = random[TestMessage]
       Stream
         .random[IO]
         .map { i =>
@@ -71,7 +62,7 @@ class ClientSpec extends IOSpec {
   }
 
   it should "produce and consume messages" in {
-    val random = 100
+    val random = 100L
     val input = TestMessage.arbStream(random)
 
     val outputF = BlazeClientBuilder[IO](ec)

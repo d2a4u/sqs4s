@@ -4,15 +4,13 @@ import cats.effect.IO
 import org.http4s.Method._
 import org.http4s._
 import org.http4s.client.dsl.io._
-import sqs4s.internal.aws4
 import sqs4s.internal.aws4.IOSpec
+import sqs4s.internal.aws4.common._
 import sqs4s.internal.models.CReq
 
 import scala.io.Source
 
 class CanonicalRequestSpec extends IOSpec {
-
-  import aws4.common._
 
   def expect(testName: String): String =
     Source
