@@ -4,10 +4,10 @@ services:
 - sqs4s
 jobs:
   include:
-  - stage: test
-    script:
-    - sbt ++$TRAVIS_SCALA_VERSION clean update coverage test coverageReport
-    jdk: openjdk11
+    - stage: test
+      script:
+        - sbt ++$TRAVIS_SCALA_VERSION clean update coverage sqs/test native/test coverageReport
+      jdk: openjdk11
 
 before_cache:
   - find $HOME/.ivy2 -name "ivydata-*.properties" -print -delete
