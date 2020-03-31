@@ -9,7 +9,7 @@ val circe = Seq(
   "io.circe" %% "circe-core",
   "io.circe" %% "circe-generic",
   "io.circe" %% "circe-parser"
-).map(_ % circeVersion % "test")
+).map(_ % circeVersion % Test)
 
 lazy val coreDependencies = Seq(
   "co.fs2" %% "fs2-core" % fs2Version,
@@ -20,7 +20,7 @@ lazy val coreDependencies = Seq(
 
 lazy val sqsDependencies = Seq(
   "com.amazonaws" % "amazon-sqs-java-messaging-lib" % "1.0.8",
-  "org.elasticmq" %% "elasticmq-rest-sqs" % "0.14.15" % "test"
+  "org.elasticmq" %% "elasticmq-rest-sqs" % "0.14.15" % Test
 ) ++ circe
 
 lazy val nativeDependencies = Seq(
@@ -32,8 +32,8 @@ lazy val nativeDependencies = Seq(
 ) ++ circe
 
 lazy val benchmarkDependencies = Seq(
-  "org.slf4j" % "log4j-over-slf4j" % "1.7.28" % "test",
-  "log4j" % "log4j" % "1.2.17" % "test"
+  "org.slf4j" % "log4j-over-slf4j" % "1.7.28" % Test,
+  "log4j" % "log4j" % "1.2.17" % Test
 )
 
 lazy val commonSettings = Seq(
@@ -81,9 +81,6 @@ lazy val native = project
     scalacOptions in Test ~= filterConsoleScalacOptions,
     scalacOptions in Compile ~= filterConsoleScalacOptions,
     commonSettings
-  )
-  .dependsOn(
-    core
   )
 
 lazy val benchmark = project
