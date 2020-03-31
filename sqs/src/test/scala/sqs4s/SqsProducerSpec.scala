@@ -24,12 +24,10 @@ class SqsProducerSpec
 
   implicit val timer: Timer[IO] = IO.timer(global)
   implicit val cs: ContextShift[IO] = IO.contextShift(global)
-  implicit val arbEvent: Arbitrary[Event] = Arbitrary(
-    for {
-      id <- Gen.alphaNumStr
-      name <- Gen.alphaNumStr
-    } yield Event(id, name)
-  )
+  implicit val arbEvent: Arbitrary[Event] = Arbitrary(for {
+    id <- Gen.alphaNumStr
+    name <- Gen.alphaNumStr
+  } yield Event(id, name))
 
   private var server: SQSRestServer = _
   val accessKey = "y"
