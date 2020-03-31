@@ -60,13 +60,28 @@ class MessageSpec extends IOSpec {
         Stream.eval(r)
       }
 
+    def takeWhileCond(n: Int): Pipe[IO, Int, Int] = {
+      var soFar: List[Int] = List.empty
+      in => {
+        in.takeWhile { i =>
+          if (!soFar.contains(i) && soFar.length < n) {
+            soFar = soFar :+ i
+            true
+          } else if (soFar.length == n) {
+            false
+          } else true
+        }
+      }
+    }
+
     val polled = BlazeClientBuilder[IO](ec).resource.use { implicit client =>
       val read1 = ReceiveMessage[IO, Int](10).runWith(setting)
       val read = Stream.repeatEval(read1).flatMap(Stream.emits)
 
       val result = read.broadcastThrough(ack)
-      result.take(10).compile.toList
+      takeWhileCond(10).apply(result).take(10).compile.toList
     }
+
     polled.unsafeRunSync() should contain theSameElementsAs inputs
   }
 }
