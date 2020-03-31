@@ -115,7 +115,8 @@ lazy val root = project
   .aggregate(
     core,
     sqs,
-    benchmark
+    benchmark,
+    native
   )
 
 lazy val noPublish = Seq(
