@@ -9,7 +9,7 @@ import fs2._
 import javax.jms.{BytesMessage, Session, TextMessage}
 import org.elasticmq.rest.sqs.{SQSRestServer, SQSRestServerBuilder}
 import org.scalatest.{BeforeAndAfterAll, FlatSpec, Matchers}
-import sqs4s.serialization.instances._
+import sqs4s.instances._
 
 import scala.concurrent.ExecutionContext.global
 
@@ -19,7 +19,7 @@ class SqsConsumerSpec extends FlatSpec with Matchers with BeforeAndAfterAll {
   implicit val cs: ContextShift[IO] = IO.contextShift(global)
 
   private var server: SQSRestServer = _
-  val accessKey = "x"
+  val accessKey = "y"
   val secretKey = "x"
   val txtQueueName = "test-queue-txt"
   val binQueueName = "test-queue-bin"
@@ -94,7 +94,7 @@ class SqsConsumerSpec extends FlatSpec with Matchers with BeforeAndAfterAll {
 
   it should "manually acknowledge message" in new Fixture {
     client.createQueue(txtQueueName)
-    val events = Stream.fromIterator[IO, Event](random[Event](10).toIterator)
+    val events = Stream.emits[IO, Event](random[Event](10))
     val producerStrSrc =
       SqsProducer
         .resource[IO](txtQueueName, Session.AUTO_ACKNOWLEDGE, client)
