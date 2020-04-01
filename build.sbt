@@ -15,7 +15,7 @@ lazy val coreDependencies = Seq(
   "co.fs2" %% "fs2-core" % fs2Version,
   "javax.xml.bind" % "jaxb-api" % "2.4.0-b180830.0359",
   "org.scalatest" %% "scalatest" % "3.0.8" % Test,
-  "com.danielasfregola" %% "random-data-generator" % "2.7" % Test
+  "com.danielasfregola" %% "random-data-generator" % "2.8" % Test
 ) ++ circe
 
 lazy val sqsDependencies = Seq(
