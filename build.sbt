@@ -1,7 +1,7 @@
 import sbt.Keys.organization
 import sbt.addCompilerPlugin
 
-val circeVersion = "0.11.2"
+val circeVersion = "0.13.0"
 val fs2Version = "1.0.5"
 val http4sVersion = "0.20.6"
 
