@@ -68,7 +68,7 @@ class ProducerBenchmark {
       .use(
         _.multiple[Event, String, TextMessage](
           fs2.Stream
-            .fromIterator[IO, Event](random[Event](numberOfEvents).toIterator)
+            .emits[IO, Event](random[Event](numberOfEvents))
         ).compile.drain
       )
       .unsafeRunSync()
@@ -79,8 +79,8 @@ class ProducerBenchmark {
     setup()
       .use(
         _.batch[Event, String, TextMessage](
-          fs2.Stream.fromIterator[IO, (String, Event)](
-            random[(String, Event)](numberOfEvents).toIterator
+          fs2.Stream.emits[IO, (String, Event)](
+            random[(String, Event)](numberOfEvents)
           ),
           batchSize(numberOfEvents),
           5.seconds
