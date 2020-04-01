@@ -8,12 +8,13 @@ import com.danielasfregola.randomdatagenerator.RandomDataGenerator._
 import fs2._
 import javax.jms.{BytesMessage, Session, TextMessage}
 import org.elasticmq.rest.sqs.{SQSRestServer, SQSRestServerBuilder}
+import org.scalacheck.{Arbitrary, Gen}
 import org.scalatest.{BeforeAndAfterAll, FlatSpec, Inspectors, Matchers}
-import sqs4s.serialization.instances._
 
 import scala.collection.JavaConverters._
 import scala.concurrent.ExecutionContext.global
 import scala.concurrent.duration._
+import sqs4s.instances._
 
 class SqsProducerSpec
     extends FlatSpec
@@ -23,9 +24,13 @@ class SqsProducerSpec
 
   implicit val timer: Timer[IO] = IO.timer(global)
   implicit val cs: ContextShift[IO] = IO.contextShift(global)
+  implicit val arbEvent: Arbitrary[Event] = Arbitrary(for {
+    id <- Gen.alphaNumStr
+    name <- Gen.alphaNumStr
+  } yield Event(id, name))
 
   private var server: SQSRestServer = _
-  val accessKey = "x"
+  val accessKey = "y"
   val secretKey = "x"
   val testQueueName = "test-queue-void"
 
@@ -72,23 +77,21 @@ class SqsProducerSpec
   }
 
   it should "produce multiple text messages" in new Fixture {
-    val events = random[Event](10).toIterator
+    val events = random[Event](10)
     producer
       .use(
-        _.multiple[Event, String, TextMessage](
-          Stream.fromIterator[IO, Event](events)
-        ).compile.toList
+        _.multiple[Event, String, TextMessage](Stream.emits[IO, Event](events)).compile.toList
       )
       .unsafeRunSync()
       .length shouldEqual 10
   }
 
   it should "produce multiple binary messages" in new Fixture {
-    val events = random[Event](10).toIterator
+    val events = random[Event](10)
     producer
       .use(
         _.multiple[Event, Stream[IO, Byte], BytesMessage](
-          Stream.fromIterator[IO, Event](events)
+          Stream.emits[IO, Event](events)
         ).compile.toList
       )
       .unsafeRunSync()
@@ -100,7 +103,7 @@ class SqsProducerSpec
     val results = producer
       .use(
         _.batch[Event, String, TextMessage](
-          Stream.fromIterator[IO, (String, Event)](events.toIterator),
+          Stream.emits[IO, (String, Event)](events),
           3,
           5.seconds
         ).compile.toList
@@ -115,7 +118,7 @@ class SqsProducerSpec
     val results = producer
       .use(
         _.attemptBatch[Event, String, TextMessage](
-          Stream.fromIterator[IO, (String, Event)](events.toIterator),
+          Stream.emits[IO, (String, Event)](events),
           3,
           5.seconds
         ).compile.toList
@@ -136,8 +139,8 @@ class SqsProducerSpec
     // when sending batch, each entry should have unique ID,
     // here, all events have the same ID, it should fail
     val event = random[Event]
-    val erroneous = Stream.fromIterator[IO, (String, Event)](
-      List.fill(10)(event).map(e => (e.id, e)).toIterator
+    val erroneous = Stream.emits[IO, (String, Event)](
+      List.fill(10)(event).map(e => (e.id, e))
     )
     val results = producer
       .use(

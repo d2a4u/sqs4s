@@ -34,3 +34,6 @@ project/target
 # Mac
 .DS_Store
 
+.envrc
+
+logs/
