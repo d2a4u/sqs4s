@@ -32,7 +32,7 @@ lazy val nativeDependencies = Seq(
 ) ++ circe
 
 lazy val benchmarkDependencies = Seq(
-  "org.slf4j" % "log4j-over-slf4j" % "1.7.28" % Test,
+  "org.slf4j" % "log4j-over-slf4j" % "1.7.30" % Test,
   "log4j" % "log4j" % "1.2.17" % Test
 )
 
