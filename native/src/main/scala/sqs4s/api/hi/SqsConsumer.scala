@@ -1,4 +1,4 @@
-package sqs4s.native
+package sqs4s.api.hi
 
 import cats.effect.{Clock, Concurrent}
 import cats.implicits._
@@ -6,7 +6,7 @@ import fs2._
 import org.http4s.client.Client
 import sqs4s.api.lo.{DeleteMessage, ReceiveMessage}
 import sqs4s.api.{ConsumerSettings, SqsSettings}
-import sqs4s.native.serialization.SqsDeserializer
+import sqs4s.serialization.SqsDeserializer
 
 trait SqsConsumer[F[_], T] {
   def consume(process: T => F[Unit]): F[Unit]

@@ -1,12 +1,11 @@
-package sqs4s.internal
+package sqs4s.api.lo
 
 import java.time.Instant
 
 import cats.effect.{Clock, IO}
-import org.http4s.client.blaze.BlazeClientBuilder
 import org.http4s.Uri
+import org.http4s.client.blaze.BlazeClientBuilder
 import org.scalatest.Ignore
-import sqs4s.api.lo.CreateQueue
 import sqs4s.api.{AwsAuth, SqsSettings}
 import sqs4s.internal.aws4.IOSpec
 
@@ -37,7 +36,6 @@ class CreateQueueSpec extends IOSpec {
         CreateQueue[IO]("test", sqsEndpoint).runWith(setting)
       }
       .unsafeRunSync()
-    println(created)
     created shouldBe a[String]
   }
 }

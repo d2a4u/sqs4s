@@ -1,18 +1,17 @@
-package sqs4s.internal
+package sqs4s.api.lo
 
 import java.time.Instant
 import java.util.concurrent.TimeUnit
 
-import fs2._
 import cats.effect.{Clock, IO}
 import cats.implicits._
+import fs2._
 import org.http4s.Uri
 import org.http4s.client.Client
 import org.http4s.client.blaze.BlazeClientBuilder
-import sqs4s.api._
-import sqs4s.api.lo.{DeleteMessage, ReceiveMessage, SendMessage}
+import sqs4s.api.{AwsAuth, SqsSettings}
 import sqs4s.internal.aws4.IOSpec
-import sqs4s.native.serialization.{SqsDeserializer, SqsSerializer}
+import sqs4s.serialization.{SqsDeserializer, SqsSerializer}
 
 class MessageSpec extends IOSpec {
   override implicit lazy val testClock: Clock[IO] = new Clock[IO] {

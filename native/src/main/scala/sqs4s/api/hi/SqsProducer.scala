@@ -1,11 +1,11 @@
-package sqs4s.native
+package sqs4s.api.hi
 
-import cats.implicits._
 import cats.effect.{Clock, Sync}
+import cats.implicits._
 import org.http4s.client.Client
 import sqs4s.api.SqsSettings
 import sqs4s.api.lo.SendMessage
-import sqs4s.native.serialization.SqsSerializer
+import sqs4s.serialization.SqsSerializer
 
 import scala.concurrent.duration.Duration
 

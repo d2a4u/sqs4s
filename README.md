@@ -6,127 +6,106 @@
 [![Codacy Badge](https://api.codacy.com/project/badge/Grade/8a331de033cb4700acddb175af4148bb)](https://www.codacy.com/app/d2a4u/sqs4s?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=d2a4u/sqs4s&amp;utm_campaign=Badge_Grade)
 [![Download](https://api.bintray.com/packages/d2a4u/sqs4s/sqs4s-core/images/download.svg)](https://bintray.com/d2a4u/sqs4s/sqs4s-core/_latestVersion)
 
-Streaming client for AWS SQS using fs2
+Streaming client for AWS SQS using [fs2](https://github.com/functional-streams-for-scala/fs2).
+
+The library has no dependency on Java AWS SDK, it provides features to consuming 
+and producing message by leveraging AWS SQS's HTTP API. Hence, internally, consuming
+and producing to SQS are just pure HTTP calls. The library handles authentication 
+by implementing the [AWS Signature V4](https://docs.aws.amazon.com/general/latest/gr/sigv4_signing.html).
 
 ## Install
 
-The latest version is 0.1.x. See the badge at the top of the README for the exact version number.
+See the badge at the top of the README for the exact version number.
 
 Add the following to your `build.sbt`:
 
 ```scala
 resolvers += Resolver.bintrayRepo("d2a4u", "sqs4s")
 
-// available for Scala 2.11 and 2.12
-libraryDependencies += "io.sqs4s" %% "sqs4s-core" % "LATEST_VERSION"
-libraryDependencies += "io.sqs4s" %% "sqs4s-sqs" % "LATEST_VERSION"
+// available for Scala 2.12
+libraryDependencies += "io.sqs4s" %% "sqs4s-native" % "LATEST_VERSION"
 ```
 
 ## Usage
 
-### Producing
+*Limitation:* SQS HTTP API limits maximum message size of 256 KB and the message
+body needs to be provided as URL's query parameter, hence: 
 
-#### Encoder & Serializer
+- we cannot make use of streaming message as request's body 
+- the message should only has characters that are safe for URL encoding
+- you should always use HTTPS
 
-Any case classes can be transformed into a SQS message by implementing the 
-following encoder and serializer:
+However, it is good practice to keep message's size small since it should only 
+contains references rather than data.
 
-```scala
-abstract class MessageEncoder[F[_]: Monad, T, U, M] {
-  def to(u: U): F[M]
-  def serialize(t: T): F[U]
-  def encode(t: T): F[M] = serialize(t).flatMap(to)
-}
+### Serializing Messages
 
-abstract class MessageSerializer[F[_], T, U] {
-  def serialize(t: T): F[U]
-}
-```
-
-Where `T` is the type of the case class, `U` is the intermediate data type and
-`M` is the SQS message type. There are 2 built-in encoders from `String` and
-`Stream[F, Byte]` such as `MessageEncoder[F[_]: Monad, T, String, TextMessage]`.
-So as long as there is an implicit `MessageSerializer` in scope, a SQS message
-can be created. Here is a simple example for JSON using `circe`:
-
-```MessageSerializer.instance[IO, Event, String](_.asJson.noSpaces.pure[IO])```
-
-#### Producer
-
-To create a `cats.effect.Resource` of `SqsProducer`:
+Because of the limitation stated above, serialize is actual quite simple:
 
 ```scala
-SqsProducer.resource[IO]("test-queue", Session.AUTO_ACKNOWLEDGE, client)
+def serialize(t: T): String
 ```
+Just need to make sure that the serialized String only contains URL encoding
+characters.
 
-And to publish a message:
-
-```scala 
-producerSrc
-      .use(_.single[Event, String, TextMessage](Event(1, "test")))
-      .unsafeRunSync()
-```
-### Consuming
-
-#### Decoder & Deserializer
-
-Reversely, a SQS message can be decoded and deserialized by having instances of:
+Deserialize is:
 
 ```scala
-abstract class MessageDecoder[F[_]: Monad, M, U, T] {
-  def from(msg: M): F[U]
-  def deserialize(u: U): F[T]
-  def decode(msg: M): F[T] = from(msg).flatMap(deserialize)
-}
-
-abstract class MessageDeserializer[F[_], U, T] {
-  def deserialize(u: U): F[T]
-}
-```
-Again, a trivial JSON implementation can be:
-```scala
-implicit val deserializerStr: MessageDeserializer[IO, String, Event] =
-    MessageDeserializer.instance[IO, String, Event](
-      str => IO.fromEither(decode[Event](str))
-    )
-``` 
-
-#### Consumer
-
-To create a `cats.effect.Resource` of `SqsConsumer`:
-
-```scala
-SqsConsumer.resource[IO]("test-queue", Session.AUTO_ACKNOWLEDGE, client)
+def deserialize(s: String): F[T]
 ```
 
-And to start consuming messages as stream:
+Where `F` is `F[_]: MonadError[?[_], Throwable]` to encapsulate error.
 
-```scala 
-consumerSrc.use(_.consume().flatMap(_.take(1).compile.toList))
-```
+### APIs
 
-## Benchmark
+#### Low Level
 
-To run benchmark, in `sbt` console, run:
+1-2-1 implementation of [SQS' API](https://docs.aws.amazon.com/AWSSimpleQueueService/latest/APIReference/API_Operations.html)
+
+- CreateQueue
+- DeleteMessage
+- ReceiveMessage
+- SendMessage
+
+#### High Level
+
+- `produce`: produce a message to SQS
+- `consume`: consume messages from SQS as a fs2 Stream, only acknowledge the message only when it has been processed
+- `consumeAsync`: consume messages but making multiple calls to SQS in parallel
+- `dequeue`: get messages from SQS as a fs2 Stream but acknowledge right away
+- `dequeueAsync`: get messages but making multiple calls to SQS in parallel
+- `peek`: peek for X number of messages in SQS without acknowledging them
+
+## Examples
+
+### Create Queue
 
 ```scala
-project benchmark
-jmh:run -i 20 -wi 10 -f1 -t1
+val created = BlazeClientBuilder[IO](ec).resource
+  .use { implicit client =>
+    CreateQueue[IO]("test", sqsEndpoint).runWith(setting)
+  }
+  .unsafeRunSync()
 ```
 
-For example, the results below are from running benchmark locally on my machine.
+### Produce and Consume
 
-### Producer
-```text
-Benchmark                   (numberOfEvents)   Mode  Cnt    Score    Error  Units
-ProducerBenchmark.batch                    1  thrpt   20  190.623 ±  9.185  ops/s
-ProducerBenchmark.batch                   10  thrpt   20  156.782 ±  9.454  ops/s
-ProducerBenchmark.batch                  100  thrpt   20   80.920 ±  2.230  ops/s
-ProducerBenchmark.batch                 1000  thrpt   20   11.536 ±  0.056  ops/s
-ProducerBenchmark.multiple                 1  thrpt   20  221.551 ± 12.533  ops/s
-ProducerBenchmark.multiple                10  thrpt   20  119.252 ± 16.934  ops/s
-ProducerBenchmark.multiple               100  thrpt   20   22.151 ±  0.248  ops/s
-ProducerBenchmark.multiple              1000  thrpt   20    2.354 ±  0.032  ops/s
+```scala
+BlazeClientBuilder[IO](ec)
+  .withMaxTotalConnections(100)
+  .withMaxWaitQueueLimit(2048)
+  .withMaxConnectionsPerRequestKey(Function.const(2048))
+  .resource
+  .use { implicit client =>
+    val producer = SqsProducer.instance[IO, String](settings)
+    val consumer = SqsConsumer.instance[IO, String](settings)
+    // mapAsync number should match connection pool connections
+    Stream.emits[IO, String](List.fill(10)("Test"))
+      .mapAsync(2048)(producer.produce)
+      .compile
+      .drain
+      .flatMap(_ => consumer.dequeueAsync(2048).take(10).compile.drain)
+  }.unsafeRunSync()
 ```
 
 ## License

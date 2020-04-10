@@ -4,7 +4,7 @@ import cats.effect.{Clock, Sync}
 import cats.implicits._
 import org.http4s.client.Client
 import org.http4s.scalaxml._
-import sqs4s.native.serialization.SqsSerializer
+import sqs4s.serialization.SqsSerializer
 import sqs4s.api.SqsSettings
 
 import scala.concurrent.duration.Duration
