@@ -2,10 +2,10 @@ package sqs4s.api.lo
 
 import cats.effect.{Clock, Sync}
 import cats.implicits._
-import org.http4s.client.Client
-import org.http4s.scalaxml._
+import org.http4s.Request
 import sqs4s.serialization.SqsSerializer
 import sqs4s.api.SqsSettings
+import sqs4s.api.errors.UnexpectedResponseError
 
 import scala.concurrent.duration.Duration
 import scala.xml.Elem
@@ -19,7 +19,7 @@ case class SendMessage[F[_]: Sync: Clock, T](
 )(implicit serializer: SqsSerializer[T])
     extends Action[F, SendMessage.Result] {
 
-  def sign(settings: SqsSettings) = {
+  def mkRequest(settings: SqsSettings): F[Request[F]] = {
     val params = {
       val queries = List(
         "Action" -> "SendMessage",
@@ -35,8 +35,8 @@ case class SendMessage[F[_]: Sync: Clock, T](
         .flatMap {
           case ((key, value), index) =>
             List(
-              s"Attribute.${index + 1}.Name" -> key,
-              s"Attribute.${index + 1}.Value" -> value
+              s"MessageAttribute.${index + 1}.Name" -> key,
+              s"MessageAttribute.${index + 1}.Value" -> value
             )
         } ++ queries).sortBy {
         case (key, _) => key
@@ -45,45 +45,26 @@ case class SendMessage[F[_]: Sync: Clock, T](
 
     SignedRequest.post(params, settings.queue, settings.auth).render
   }
-  def runWith(
-    settings: SqsSettings
-  )(implicit client: Client[F]
-  ): F[SendMessage.Result] = {
-    val params = {
-      val queries = List(
-        "Action" -> "SendMessage",
-        "MessageBody" -> serializer.serialize(message),
-        "Version" -> "2012-11-05"
-      ) ++ (
-        dedupId.map(ddid => List("MessageDeduplicationId" -> ddid)) |+|
-          groupId.map(gid => List("MessageGroupId" -> gid)) |+|
-          delay.map(d => List("DelaySeconds" -> d.toSeconds.toString))
-      ).getOrElse(List.empty)
 
-      (attributes.zipWithIndex.toList
-        .flatMap {
-          case ((key, value), index) =>
-            List(
-              s"Attribute.${index + 1}.Name" -> key,
-              s"Attribute.${index + 1}.Value" -> value
-            )
-        } ++ queries).sortBy {
-        case (key, _) => key
-      }
-    }
-
-    for {
-      req <- SignedRequest.post(params, settings.queue, settings.auth).render
-      resp <- client
-        .expectOr[Elem](req)(handleError)
-        .map { xml =>
-          val md5MsgBody = (xml \\ "MD5OfMessageBody").text
-          val md5MsgAttr = (xml \\ "MD5OfMessageAttributes").text
-          val mid = (xml \\ "MessageId").text
-          val rid = (xml \\ "RequestId").text
-          SendMessage.Result(md5MsgBody, md5MsgAttr, mid, rid)
-        }
-    } yield resp
+  def parseResponse(response: Elem): F[SendMessage.Result] = {
+    val md5MsgBody = (response \\ "MD5OfMessageBody").text
+    val md5MsgAttr = (response \\ "MD5OfMessageAttributes").text
+    val mid = (response \\ "MessageId").text
+    val rid = (response \\ "RequestId").text
+    (for {
+      _ <- md5MsgBody.nonEmpty.guard[Option]
+      _ <- mid.nonEmpty.guard[Option]
+      _ <- rid.nonEmpty.guard[Option]
+    } yield {
+      SendMessage.Result(md5MsgBody, md5MsgAttr, mid, rid).pure[F]
+    }).getOrElse(
+      Sync[F].raiseError(
+        UnexpectedResponseError(
+          "MD5OfMessageBody, MD5OfMessageAttributes, MessageId, RequestId",
+          response
+        )
+      )
+    )
   }
 }
 

@@ -9,21 +9,21 @@ val circe = Seq(
   "io.circe" %% "circe-core",
   "io.circe" %% "circe-generic",
   "io.circe" %% "circe-parser"
-).map(_ % circeVersion % Test)
+).map(_ % circeVersion)
 
 lazy val dependencies = Seq(
-  "org.http4s" %% "http4s-blaze-client" % http4sVersion,
-  "org.http4s" %% "http4s-scala-xml" % http4sVersion,
+  "org.http4s"             %% "http4s-blaze-client"      % http4sVersion,
+  "org.http4s"             %% "http4s-scala-xml"         % http4sVersion,
   "org.scala-lang.modules" %% "scala-parser-combinators" % "1.1.2",
-  "io.chrisdavenport" %% "log4cats-slf4j" % "1.0.1",
-  "co.fs2" %% "fs2-core" % fs2Version,
-  "javax.xml.bind" % "jaxb-api" % "2.4.0-b180830.0359"
+  "io.chrisdavenport"      %% "log4cats-slf4j"           % "1.0.1",
+  "co.fs2"                 %% "fs2-core"                 % fs2Version,
+  "javax.xml.bind"         % "jaxb-api"                  % "2.4.0-b180830.0359"
 )
 
 lazy val testDependencies = Seq(
-  "org.scalatest" %% "scalatest" % "3.0.8" % Test,
-  "com.danielasfregola" %% "random-data-generator" % "2.7" % Test,
-  "ch.qos.logback" % "logback-classic" % "1.2.3" % Test
+  "org.scalatest"       %% "scalatest"             % "3.0.8",
+  "com.danielasfregola" %% "random-data-generator" % "2.7",
+  "ch.qos.logback"      % "logback-classic"        % "1.2.3"
 ) ++ circe
 
 lazy val commonSettings = Seq(
@@ -41,14 +41,19 @@ lazy val commonSettings = Seq(
   },
   releaseCrossBuild := true,
   bintrayReleaseOnPublish := false,
-  addCompilerPlugin(("org.typelevel" %% "kind-projector" % "0.10.3").cross(CrossVersion.binary))
+  addCompilerPlugin(
+    ("org.typelevel" %% "kind-projector" % "0.10.3").cross(CrossVersion.binary)
+  )
 )
 
+lazy val ItTest = config("it").extend(Test)
 lazy val native = project
   .in(file("native"))
+  .configs(ItTest)
+  .settings(inConfig(ItTest)(Defaults.testSettings))
   .settings(
     name := "sqs4s-native",
-    libraryDependencies ++= dependencies ++ testDependencies,
+    libraryDependencies ++= dependencies ++ testDependencies.map(_ % "it,test"),
     scalacOptions in Test ~= filterConsoleScalacOptions,
     scalacOptions in Compile ~= filterConsoleScalacOptions,
     commonSettings
@@ -57,17 +62,8 @@ lazy val native = project
 lazy val root = project
   .in(file("."))
   .enablePlugins(JmhPlugin)
-  .settings(
-    name := "sqs4s",
-    noPublish,
-    commonSettings
-  )
-  .aggregate(
-    native
-  )
+  .settings(name := "sqs4s", noPublish, commonSettings)
+  .aggregate(native)
 
-lazy val noPublish = Seq(
-  publish := {},
-  publishLocal := {},
-  publishArtifact := false
-)
+lazy val noPublish =
+  Seq(publish := {}, publishLocal := {}, publishArtifact := false)

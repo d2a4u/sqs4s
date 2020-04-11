@@ -2,10 +2,10 @@ package sqs4s.api.lo
 
 import cats.effect.{Clock, Sync}
 import cats.implicits._
-import org.http4s.client.Client
-import org.http4s.scalaxml._
+import org.http4s.Request
 import sqs4s.serialization.SqsDeserializer
 import sqs4s.api.SqsSettings
+import sqs4s.api.errors.UnexpectedResponseError
 
 import scala.xml.Elem
 
@@ -16,10 +16,7 @@ case class ReceiveMessage[F[_]: Sync: Clock, T](
 )(implicit decoder: SqsDeserializer[F, T])
     extends Action[F, List[ReceiveMessage.Result[T]]] {
 
-  def runWith(
-    setting: SqsSettings
-  )(implicit client: Client[F]
-  ): F[List[ReceiveMessage.Result[T]]] = {
+  def mkRequest(settings: SqsSettings): F[Request[F]] = {
     val queries = List(
       "Action" -> "ReceiveMessage",
       "MaxNumberOfMessages" -> maxNumberOfMessages.toString,
@@ -34,26 +31,36 @@ case class ReceiveMessage[F[_]: Sync: Clock, T](
       case (key, _) => key
     }
 
-    for {
-      req <- SignedRequest.post(params, setting.queue, setting.auth).render
-      resp <- client
-        .expectOr[Elem](req)(handleError)
-        .flatMap { xml =>
-          val msgs = xml \\ "Message"
-          msgs.toList.traverse { msg =>
-            val md5Body = (msg \ "MD5OfBody").text
-            val raw = (msg \ "Body").text
-            val attributes = (msg \ "Attribute")
-              .map(node => (node \ "Name").text -> (node \ "Value").text)
-              .toMap
-            val mid = (msg \ "MessageId").text
-            val handle = (msg \ "ReceiptHandle").text
+    SignedRequest.post(params, settings.queue, settings.auth).render
+  }
+
+  def parseResponse(response: Elem): F[List[ReceiveMessage.Result[T]]] = {
+    val msgs = response \\ "Message"
+    if (msgs.nonEmpty) {
+      msgs.toList.traverse { msg =>
+        val md5Body = (msg \ "MD5OfBody").text
+        val raw = (msg \ "Body").text
+        val attributes = (msg \ "Attribute")
+          .map(node => (node \ "Name").text -> (node \ "Value").text)
+          .toMap
+        val mid = (msg \ "MessageId").text
+        val handle = (msg \ "ReceiptHandle").text
+        handle.nonEmpty
+          .guard[Option]
+          .as {
             decoder.deserialize(raw).map { t =>
               ReceiveMessage.Result(mid, handle, t, raw, md5Body, attributes)
             }
           }
-        }
-    } yield resp
+          .getOrElse {
+            Sync[F].raiseError(
+              UnexpectedResponseError("ReceiptHandle", response)
+            )
+          }
+      }
+    } else {
+      List.empty[ReceiveMessage.Result[T]].pure[F]
+    }
   }
 }
 
