@@ -12,7 +12,7 @@ import sqs4s.serialization.instances._
 import scala.concurrent.duration._
 import scala.xml.XML
 
-class SendMessageSpec extends IOSpec {
+class SendMessageItSpec extends IOSpec {
 
   val testCurrentMillis = 1586623258684L
   val receiptHandle = "123456"

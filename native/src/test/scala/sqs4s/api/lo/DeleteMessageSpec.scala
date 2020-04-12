@@ -2,9 +2,8 @@ package sqs4s.api.lo
 
 import cats.effect.{Clock, IO}
 import org.http4s.Uri
-import org.http4s.client.blaze.BlazeClientBuilder
 import org.http4s.implicits._
-import sqs4s.api.errors.{AwsSqsError, UnexpectedResponseError}
+import sqs4s.api.errors.UnexpectedResponseError
 import sqs4s.api.{AwsAuth, SqsSettings}
 import sqs4s.internal.aws4.IOSpec
 
@@ -73,16 +72,5 @@ class DeleteMessageSpec extends IOSpec {
       .unsafeRunSync()
       .left
       .get shouldBe a[UnexpectedResponseError]
-  }
-
-  it should "raise error for error response" in {
-    BlazeClientBuilder[IO](ec).resource
-      .use { implicit client =>
-        DeleteMessage[IO](receiptHandle).runWith(settings)
-      }
-      .attempt
-      .unsafeRunSync()
-      .left
-      .get shouldBe a[AwsSqsError]
   }
 }

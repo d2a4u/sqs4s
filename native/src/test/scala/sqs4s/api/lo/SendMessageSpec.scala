@@ -2,9 +2,8 @@ package sqs4s.api.lo
 
 import cats.effect.{Clock, IO}
 import org.http4s.Uri
-import org.http4s.client.blaze.BlazeClientBuilder
 import org.http4s.implicits._
-import sqs4s.api.errors.{AwsSqsError, UnexpectedResponseError}
+import sqs4s.api.errors.UnexpectedResponseError
 import sqs4s.api.{AwsAuth, SqsSettings}
 import sqs4s.internal.aws4.IOSpec
 import sqs4s.serialization.instances._
@@ -80,7 +79,9 @@ class SendMessageSpec extends IOSpec {
     resp.requestId shouldEqual "27daac76-34dd-47df-bd01-1f6e873584a0"
     resp.messageId shouldEqual "5fea7756-0ea4-451a-a703-a558b933e274"
     resp.messageBodyMd5 shouldEqual "fafb00f5732ab283681e124bf8747ed1"
-    resp.messageAttributesMd5 shouldEqual "3ae8f24a165a8cedc005670c81a27295"
+    resp.messageAttributesMd5 shouldEqual Some(
+      "3ae8f24a165a8cedc005670c81a27295"
+    )
   }
 
   it should "raise error for unexpected response" in {
@@ -107,14 +108,4 @@ class SendMessageSpec extends IOSpec {
       .get shouldBe a[UnexpectedResponseError]
   }
 
-  it should "raise error for error response" in {
-    BlazeClientBuilder[IO](ec).resource
-      .use { implicit client =>
-        SendMessage[IO, String]("test").runWith(settings)
-      }
-      .attempt
-      .unsafeRunSync()
-      .left
-      .get shouldBe a[AwsSqsError]
-  }
 }

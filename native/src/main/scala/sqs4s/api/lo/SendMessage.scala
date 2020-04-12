@@ -48,7 +48,7 @@ case class SendMessage[F[_]: Sync: Clock, T](
 
   def parseResponse(response: Elem): F[SendMessage.Result] = {
     val md5MsgBody = (response \\ "MD5OfMessageBody").text
-    val md5MsgAttr = (response \\ "MD5OfMessageAttributes").text
+    val md5MsgAttr = response \\ "MD5OfMessageAttributes"
     val mid = (response \\ "MessageId").text
     val rid = (response \\ "RequestId").text
     (for {
@@ -56,7 +56,14 @@ case class SendMessage[F[_]: Sync: Clock, T](
       _ <- mid.nonEmpty.guard[Option]
       _ <- rid.nonEmpty.guard[Option]
     } yield {
-      SendMessage.Result(md5MsgBody, md5MsgAttr, mid, rid).pure[F]
+      SendMessage
+        .Result(
+          md5MsgBody,
+          md5MsgAttr.nonEmpty.guard[Option].as(md5MsgAttr.text),
+          mid,
+          rid
+        )
+        .pure[F]
     }).getOrElse(
       Sync[F].raiseError(
         UnexpectedResponseError(
@@ -71,7 +78,7 @@ case class SendMessage[F[_]: Sync: Clock, T](
 object SendMessage {
   case class Result(
     messageBodyMd5: String,
-    messageAttributesMd5: String,
+    messageAttributesMd5: Option[String],
     messageId: String,
     requestId: String)
 }

@@ -2,9 +2,7 @@ package sqs4s.api.lo
 
 import cats.effect.{Clock, IO}
 import org.http4s.Uri
-import org.http4s.client.blaze.BlazeClientBuilder
 import org.http4s.implicits._
-import sqs4s.api.errors.AwsSqsError
 import sqs4s.api.{AwsAuth, SqsSettings}
 import sqs4s.internal.aws4.IOSpec
 import sqs4s.serialization.instances._
@@ -105,14 +103,5 @@ class ReceiveMessageSpec extends IOSpec {
       }
       .unsafeRunSync()
       .size shouldBe 0
-  }
-
-  it should "raise error for error response" in {
-    BlazeClientBuilder[IO](ec).resource
-      .use(implicit client => ReceiveMessage[IO, String]().runWith(settings))
-      .attempt
-      .unsafeRunSync()
-      .left
-      .get shouldBe a[AwsSqsError]
   }
 }
