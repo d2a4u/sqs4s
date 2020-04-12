@@ -43,9 +43,7 @@ object errors {
         (xml \\ "Code").headOption.map(_.text),
         (xml \\ "Message").headOption.map(_.text),
         (xml \\ "RequestId").headOption.map(_.text)
-      ).mapN { (typ, code, msg, id) =>
-          AwsSqsError(typ, code, msg, id)
-        }
+      ).mapN((typ, code, msg, id) => AwsSqsError(typ, code, msg, id))
         .getOrElse(BasicAwsSqsError(xml))
     }
   }

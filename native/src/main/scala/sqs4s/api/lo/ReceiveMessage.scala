@@ -23,9 +23,7 @@ case class ReceiveMessage[F[_]: Sync: Clock, T](
       "VisibilityTimeout" -> visibilityTimeout.toString,
       "AttributeName" -> "All",
       "Version" -> "2012-11-05"
-    ) ++ waitTimeSeconds.toList.map { sec =>
-      "WaitTimeSeconds" -> sec.toString
-    }
+    ) ++ waitTimeSeconds.toList.map(sec => "WaitTimeSeconds" -> sec.toString)
 
     val params = queries.sortBy {
       case (key, _) => key
