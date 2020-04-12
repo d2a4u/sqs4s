@@ -4,7 +4,7 @@
 [![Build Status](https://travis-ci.com/d2a4u/sqs4s.svg?branch=master)](https://travis-ci.com/d2a4u/sqs4s)
 [![codecov](https://codecov.io/gh/d2a4u/sqs4s/branch/master/graph/badge.svg)](https://codecov.io/gh/d2a4u/sqs4s)
 [![Codacy Badge](https://api.codacy.com/project/badge/Grade/8a331de033cb4700acddb175af4148bb)](https://www.codacy.com/app/d2a4u/sqs4s?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=d2a4u/sqs4s&amp;utm_campaign=Badge_Grade)
-[![Download](https://api.bintray.com/packages/d2a4u/sqs4s/sqs4s-core/images/download.svg)](https://bintray.com/d2a4u/sqs4s/sqs4s-core/_latestVersion)
+[![Download](https://api.bintray.com/packages/d2a4u/sqs4s/sqs4s-native/images/download.svg)](https://bintray.com/d2a4u/sqs4s/sqs4s-native/_latestVersion)
 
 Streaming client for AWS SQS using [fs2](https://github.com/functional-streams-for-scala/fs2).
 
