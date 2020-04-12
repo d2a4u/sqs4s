@@ -8,10 +8,10 @@
 
 Streaming client for AWS SQS using [fs2](https://github.com/functional-streams-for-scala/fs2).
 
-The library has no dependency on Java AWS SDK, it provides features to consuming 
-and producing message by leveraging AWS SQS's HTTP API. Hence, internally, consuming
-and producing to SQS are just pure HTTP calls. The library handles authentication 
-by implementing the [AWS Signature V4](https://docs.aws.amazon.com/general/latest/gr/sigv4_signing.html).
+The library does not have dependency on Java AWS SDK, it provides features to consume
+and produce messages by leveraging AWS SQS's HTTP API. Hence, internally, consuming
+and producing to SQS are just pure HTTP calls. Authentication implements 
+the [AWS Signature V4](https://docs.aws.amazon.com/general/latest/gr/sigv4_signing.html).
 
 ## Install
 
