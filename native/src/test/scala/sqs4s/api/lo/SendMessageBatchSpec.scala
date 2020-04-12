@@ -1,7 +1,7 @@
 package sqs4s.api.lo
 
-import cats.data.NonEmptyChain
 import cats.effect.{Clock, IO}
+import fs2.Chunk
 import org.http4s.Uri
 import org.http4s.implicits._
 import sqs4s.api.errors.UnexpectedResponseError
@@ -23,8 +23,8 @@ class SendMessageBatchSpec extends IOSpec {
     AwsAuth(accessKey, secretKey, "eu-west-1")
   )
   val attr = Map("foo" -> "1", "bar" -> "2")
-  val batch = NonEmptyChain(
-    RequestEntry(
+  val batch = Chunk(
+    SendMessageBatch.Entry(
       "1",
       "test1",
       attr,
@@ -32,7 +32,7 @@ class SendMessageBatchSpec extends IOSpec {
       Some("dedup1"),
       Some("group1")
     ),
-    RequestEntry(
+    SendMessageBatch.Entry(
       "2",
       "test2",
       attr,

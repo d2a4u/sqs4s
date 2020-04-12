@@ -36,9 +36,7 @@ lazy val commonSettings = Seq(
   publishMavenStyle := true,
   bintrayRepository := "sqs4s",
   publishArtifact in Test := false,
-  pomIncludeRepository := { _ =>
-    false
-  },
+  pomIncludeRepository := { _ => false },
   releaseCrossBuild := true,
   bintrayReleaseOnPublish := false,
   addCompilerPlugin(
@@ -50,7 +48,10 @@ lazy val ItTest = config("it").extend(Test)
 lazy val native = project
   .in(file("native"))
   .configs(ItTest)
-  .settings(inConfig(ItTest)(Defaults.testSettings))
+  .settings(
+    inConfig(ItTest)(Defaults.testSettings),
+    testOptions in ItTest += Tests.Argument("-oD")
+  )
   .settings(
     name := "sqs4s-native",
     libraryDependencies ++= dependencies ++ testDependencies.map(_ % "it,test"),

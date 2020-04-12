@@ -1,8 +1,8 @@
 package sqs4s.api.lo
 
-import cats.data.NonEmptyChain
 import cats.effect.{Clock, Sync}
 import cats.implicits._
+import fs2.Chunk
 import org.http4s.Request
 import sqs4s.api.SqsSettings
 import sqs4s.api.errors.UnexpectedResponseError
@@ -11,16 +11,8 @@ import sqs4s.serialization.SqsSerializer
 import scala.concurrent.duration.Duration
 import scala.xml.Elem
 
-case class RequestEntry[T](
-  id: String,
-  message: T,
-  attributes: Map[String, String] = Map.empty,
-  delay: Option[Duration] = None,
-  dedupId: Option[String] = None,
-  groupId: Option[String] = None)
-
 case class SendMessageBatch[F[_]: Sync: Clock, T](
-  messages: NonEmptyChain[RequestEntry[T]]
+  messages: Chunk[SendMessageBatch.Entry[T]]
 )(implicit serializer: SqsSerializer[T])
     extends Action[F, SendMessageBatch.Result] {
 
@@ -116,6 +108,14 @@ case class SendMessageBatch[F[_]: Sync: Clock, T](
 }
 
 object SendMessageBatch {
+  case class Entry[T](
+    id: String,
+    message: T,
+    attributes: Map[String, String] = Map.empty,
+    delay: Option[Duration] = None,
+    dedupId: Option[String] = None,
+    groupId: Option[String] = None)
+
   case class Result(
     requestId: String,
     successes: List[Success],

@@ -1,7 +1,7 @@
 package sqs4s.api.lo
 
 import cats.effect.{Clock, IO}
-import cats.data.NonEmptyChain
+import fs2.Chunk
 import org.http4s.Uri
 import org.http4s.client.blaze.BlazeClientBuilder
 import sqs4s.api.errors.AwsSqsError
@@ -33,7 +33,7 @@ class SendMessageBatchItSpec extends IOSpec {
   it should "raise error for error response" in {
     BlazeClientBuilder[IO](ec).resource
       .use { implicit client =>
-        SendMessageBatch[IO, String](NonEmptyChain(RequestEntry("1", "test")))
+        SendMessageBatch[IO, String](Chunk(SendMessageBatch.Entry("1", "test")))
           .runWith(settings)
       }
       .attempt
