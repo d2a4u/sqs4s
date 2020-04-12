@@ -2,19 +2,16 @@ package sqs4s.api.lo
 
 import cats.effect.{Clock, Sync}
 import cats.implicits._
-import org.http4s.client.Client
-import org.http4s.scalaxml._
+import org.http4s.Request
 import sqs4s.api.SqsSettings
+import sqs4s.api.errors.UnexpectedResponseError
 
 import scala.xml.Elem
 
 case class DeleteMessage[F[_]: Sync: Clock](receiptHandle: String)
     extends Action[F, DeleteMessage.Result] {
 
-  def runWith(
-    setting: SqsSettings
-  )(implicit client: Client[F]
-  ): F[DeleteMessage.Result] = {
+  def mkRequest(settings: SqsSettings): F[Request[F]] = {
     val params = List(
       "Action" -> "DeleteMessage",
       "ReceiptHandle" -> receiptHandle,
@@ -23,14 +20,19 @@ case class DeleteMessage[F[_]: Sync: Clock](receiptHandle: String)
       case (key, _) => key
     }
 
-    for {
-      req <- SignedRequest.post(params, setting.queue, setting.auth).render
-      resp <- client
-        .expectOr[Elem](req)(handleError)
-        .map { xml =>
-          DeleteMessage.Result(xml \@ "RequestId")
-        }
-    } yield resp
+    SignedRequest.post(params, settings.queue, settings.auth).render
+  }
+
+  def parseResponse(response: Elem): F[DeleteMessage.Result] = {
+    val rid = (response \\ "RequestId").text
+    rid.nonEmpty
+      .guard[Option]
+      .as {
+        DeleteMessage.Result(rid).pure[F]
+      }
+      .getOrElse {
+        Sync[F].raiseError(UnexpectedResponseError("RequestId", response))
+      }
   }
 }
 

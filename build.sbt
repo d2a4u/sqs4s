@@ -9,32 +9,22 @@ val circe = Seq(
   "io.circe" %% "circe-core",
   "io.circe" %% "circe-generic",
   "io.circe" %% "circe-parser"
-).map(_ % circeVersion % Test)
+).map(_ % circeVersion)
 
-lazy val coreDependencies = Seq(
-  "co.fs2" %% "fs2-core" % fs2Version,
-  "javax.xml.bind" % "jaxb-api" % "2.4.0-b180830.0359",
-  "org.scalatest" %% "scalatest" % "3.0.8" % Test,
-  "com.danielasfregola" %% "random-data-generator" % "2.8" % Test
-) ++ circe
-
-lazy val sqsDependencies = Seq(
-  "com.amazonaws" % "amazon-sqs-java-messaging-lib" % "1.0.8",
-  "org.elasticmq" %% "elasticmq-rest-sqs" % "0.14.15" % Test
-) ++ circe
-
-lazy val nativeDependencies = Seq(
-  "org.http4s" %% "http4s-blaze-client" % http4sVersion,
-  "org.http4s" %% "http4s-scala-xml" % http4sVersion,
+lazy val dependencies = Seq(
+  "org.http4s"             %% "http4s-blaze-client"      % http4sVersion,
+  "org.http4s"             %% "http4s-scala-xml"         % http4sVersion,
   "org.scala-lang.modules" %% "scala-parser-combinators" % "1.1.2",
-  "io.chrisdavenport" %% "log4cats-slf4j" % "1.0.1",
-  "ch.qos.logback" % "logback-classic" % "1.2.3" % Test,
-) ++ circe
-
-lazy val benchmarkDependencies = Seq(
-  "org.slf4j" % "log4j-over-slf4j" % "1.7.28" % Test,
-  "log4j" % "log4j" % "1.2.17" % Test
+  "io.chrisdavenport"      %% "log4cats-slf4j"           % "1.0.1",
+  "co.fs2"                 %% "fs2-core"                 % fs2Version,
+  "javax.xml.bind"         % "jaxb-api"                  % "2.4.0-b180830.0359"
 )
+
+lazy val testDependencies = Seq(
+  "org.scalatest"       %% "scalatest"             % "3.0.8",
+  "com.danielasfregola" %% "random-data-generator" % "2.7",
+  "ch.qos.logback"      % "logback-classic"        % "1.2.3"
+) ++ circe
 
 lazy val commonSettings = Seq(
   organization in ThisBuild := "io.sqs4s",
@@ -51,76 +41,29 @@ lazy val commonSettings = Seq(
   },
   releaseCrossBuild := true,
   bintrayReleaseOnPublish := false,
-  addCompilerPlugin(("org.typelevel" %% "kind-projector" % "0.10.3").cross(CrossVersion.binary))
+  addCompilerPlugin(
+    ("org.typelevel" %% "kind-projector" % "0.10.3").cross(CrossVersion.binary)
+  )
 )
 
-lazy val core = project
-  .in(file("core"))
-  .settings(
-    name := "sqs4s-core",
-    libraryDependencies ++= coreDependencies,
-    commonSettings
-  )
-
-lazy val sqs = project
-  .in(file("sqs"))
-  .settings(
-    name := "sqs4s-sqs",
-    libraryDependencies ++= coreDependencies ++ sqsDependencies,
-    commonSettings
-  )
-  .dependsOn(
-    core
-  )
-
+lazy val ItTest = config("it").extend(Test)
 lazy val native = project
   .in(file("native"))
+  .configs(ItTest)
+  .settings(inConfig(ItTest)(Defaults.testSettings))
   .settings(
     name := "sqs4s-native",
-    libraryDependencies ++= coreDependencies ++ nativeDependencies,
+    libraryDependencies ++= dependencies ++ testDependencies.map(_ % "it,test"),
     scalacOptions in Test ~= filterConsoleScalacOptions,
     scalacOptions in Compile ~= filterConsoleScalacOptions,
     commonSettings
   )
 
-lazy val benchmark = project
-  .in(file("benchmark"))
-  .enablePlugins(JmhPlugin)
-  .settings(
-    name := "sqs4s-benchmark",
-    libraryDependencies ++= coreDependencies ++ sqsDependencies ++ benchmarkDependencies,
-    noPublish,
-    commonSettings,
-    sourceDirectory in Jmh := (sourceDirectory in Test).value,
-    classDirectory in Jmh := (classDirectory in Test).value,
-    dependencyClasspath in Jmh := (dependencyClasspath in Test).value,
-    compile in Jmh := (compile in Jmh).dependsOn(compile in Test).value,
-    run in Jmh := (run in Jmh).dependsOn(Keys.compile in Jmh).evaluated,
-    scalacOptions in Test ~= filterConsoleScalacOptions,
-    scalacOptions in Compile ~= filterConsoleScalacOptions
-  )
-  .dependsOn(
-    core,
-    sqs % "test->test"
-  )
-
 lazy val root = project
   .in(file("."))
   .enablePlugins(JmhPlugin)
-  .settings(
-    name := "sqs4s",
-    noPublish,
-    commonSettings
-  )
-  .aggregate(
-    core,
-    sqs,
-    benchmark,
-    native
-  )
+  .settings(name := "sqs4s", noPublish, commonSettings)
+  .aggregate(native)
 
-lazy val noPublish = Seq(
-  publish := {},
-  publishLocal := {},
-  publishArtifact := false
-)
+lazy val noPublish =
+  Seq(publish := {}, publishLocal := {}, publishArtifact := false)
