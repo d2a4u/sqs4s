@@ -5,6 +5,7 @@ services:
 jobs:
   include:
     - stage: test
+      if: branch != master
       script:
         - sbt ++$TRAVIS_SCALA_VERSION clean update coverage native/test coverageReport
       jdk: openjdk11

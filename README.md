@@ -70,6 +70,7 @@ Where `F` is `F[_]: MonadError[?[_], Throwable]` to encapsulate error.
 #### High Level
 
   - `produce`: produce a message to SQS
+  - `batchProduce`: produce messages to SQS in batch operation
   - `consume`: consume messages from SQS as a fs2 Stream, only acknowledge the message only when it has been processed
   - `consumeAsync`: consume messages but making multiple calls to SQS in parallel
   - `dequeue`: get messages from SQS as a fs2 Stream but acknowledge right away
