@@ -4,13 +4,12 @@ import cats.effect.{Clock, Concurrent, Sync, Timer}
 import cats.implicits._
 import fs2._
 import org.http4s.client.Client
-import sqs4s.api.errors.{RetriableServerError, UnknownDeleteMessageBatchError}
+import sqs4s.api.errors.UnknownDeleteMessageBatchError
 import sqs4s.api.lo.{DeleteMessage, DeleteMessageBatch, ReceiveMessage}
 import sqs4s.api.{ConsumerSettings, SqsSettings}
 import sqs4s.serialization.SqsDeserializer
 
 import scala.concurrent.duration._
-import scala.concurrent.TimeoutException
 
 trait SqsConsumer[F[_], T] {
   def consume(process: T => F[Unit]): F[Unit]
@@ -61,12 +60,12 @@ abstract class DefaultSqsConsumer[
   override def consume(process: T => F[Unit]): F[Unit] = {
     def ack(proc: T => F[Unit]): Pipe[F, ReceiveMessage.Result[T], Unit] =
       _.flatMap { res =>
-        Stream.eval(proc(res.body)).flatMap { _ =>
-          val deletion = DeleteMessage[F](res.receiptHandle)
+        val processed = proc(res.body).flatMap { _ =>
+          DeleteMessage[F](res.receiptHandle)
             .runWith(settings)
-            .void
-          retry(deletion)
+            .as(())
         }
+        Stream.eval(processed)
       }
 
     Stream
@@ -98,7 +97,7 @@ abstract class DefaultSqsConsumer[
         }
         for {
           entries <- entriesF
-          batch <- retry(DeleteMessageBatch(entries).runWith(settings)).compile.lastOrError
+          batch <- DeleteMessageBatch(entries).runWith(settings)
           void <- if (batch.errors.isEmpty) {
             ().pure[F]
           } else {
@@ -192,15 +191,4 @@ abstract class DefaultSqsConsumer[
       consumerSettings.waitTimeSeconds
     ).runWith(settings)
 
-  private def retry[U](f: F[U]) =
-    Stream
-      .retry[F, U](
-        f,
-        consumerSettings.initialDelay,
-        _ * 2,
-        consumerSettings.maxRetry, {
-          case _: TimeoutException => true
-          case RetriableServerError => true
-        }
-      )
 }
