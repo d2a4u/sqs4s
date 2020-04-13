@@ -6,7 +6,12 @@ jobs:
   include:
     - stage: test
       script:
-          - sbt ++$TRAVIS_SCALA_VERSION clean update coverage native/test native/it:test coverageReport
+        - sbt ++$TRAVIS_SCALA_VERSION clean update coverage native/test coverageReport
+      jdk: openjdk11
+    - stage: master
+      if: branch = master
+      script:
+        - sbt ++$TRAVIS_SCALA_VERSION clean update coverage native/test native/it:test coverageReport
       jdk: openjdk11
 
 before_cache:
