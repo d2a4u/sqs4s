@@ -17,17 +17,13 @@ case class ReceiveMessage[F[_]: Sync: Clock, T](
     extends Action[F, List[ReceiveMessage.Result[T]]] {
 
   def mkRequest(settings: SqsSettings): F[Request[F]] = {
-    val queries = List(
+    val params = List(
       "Action" -> "ReceiveMessage",
       "MaxNumberOfMessages" -> maxNumberOfMessages.toString,
       "VisibilityTimeout" -> visibilityTimeout.toString,
       "AttributeName" -> "All",
       "Version" -> "2012-11-05"
     ) ++ waitTimeSeconds.toList.map(sec => "WaitTimeSeconds" -> sec.toString)
-
-    val params = queries.sortBy {
-      case (key, _) => key
-    }
 
     SignedRequest.post(params, settings.queue, settings.auth).render
   }

@@ -62,20 +62,22 @@ Where `F` is `F[_]: MonadError[?[_], Throwable]` to encapsulate error.
 
 1-2-1 implementation of [SQS' API](https://docs.aws.amazon.com/AWSSimpleQueueService/latest/APIReference/API_Operations.html)
 
-  - CreateQueue
-  - DeleteMessage
-  - ReceiveMessage
-  - SendMessage
+- CreateQueue
+- DeleteMessage
+- DeleteMessageBatch
+- ReceiveMessage
+- SendMessage
+- SendMessageBatch
 
 #### High Level
 
-  - `produce`: produce a message to SQS
-  - `batchProduce`: produce messages to SQS in batch operation
-  - `consume`: consume messages from SQS as a fs2 Stream, only acknowledge the message only when it has been processed
-  - `consumeAsync`: consume messages but making multiple calls to SQS in parallel
-  - `dequeue`: get messages from SQS as a fs2 Stream but acknowledge right away
-  - `dequeueAsync`: get messages but making multiple calls to SQS in parallel
-  - `peek`: peek for X number of messages in SQS without acknowledging them
+- `produce`: produce a message to SQS
+- `batchProduce`: produce messages to SQS in batch operation
+- `consume`: consume messages from SQS as a fs2 Stream, only acknowledge the message only when it has been processed
+- `consumeAsync`: consume messages but making multiple calls to SQS in parallel
+- `dequeue`: get messages from SQS as a fs2 Stream but acknowledge right away
+- `dequeueAsync`: get messages but making multiple calls to SQS in parallel
+- `peek`: peek for X number of messages in SQS without acknowledging them
 
 ## Examples
 

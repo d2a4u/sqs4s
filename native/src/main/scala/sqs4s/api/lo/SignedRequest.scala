@@ -46,8 +46,12 @@ object SignedRequest {
     params: List[(String, String)],
     url: Uri,
     auth: AwsAuth
-  ) =
-    SignedRequest[F](params, Request[F](method = Method.POST), url, auth)
+  ) = {
+    val sortedParams = params.sortBy {
+      case (key, _) => key
+    }
+    SignedRequest[F](sortedParams, Request[F](method = Method.POST), url, auth)
+  }
 
   def get[F[_]: Sync: Clock](
     params: List[(String, String)],

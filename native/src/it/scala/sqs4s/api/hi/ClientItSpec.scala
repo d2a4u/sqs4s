@@ -17,8 +17,6 @@ import sqs4s.api._
 import sqs4s.internal.aws4.IOSpec
 import sqs4s.serialization.{SqsDeserializer, SqsSerializer}
 
-import scala.concurrent.duration._
-
 class ClientItSpec extends IOSpec {
   override implicit lazy val testClock: Clock[IO] = new Clock[IO] {
     def realTime(unit: TimeUnit): IO[Long] = IO.delay {
@@ -81,7 +79,7 @@ class ClientItSpec extends IOSpec {
   }
 
   it should "batch produce messages" in new Fixture {
-    val random = 10L
+    val random = 20L
     val input = TestMessage.arbStream(random)
 
     val outputF = clientResrc
@@ -89,9 +87,8 @@ class ClientItSpec extends IOSpec {
         val producer = SqsProducer.instance[IO, TestMessage](settings)
         val consumer = SqsConsumer.instance[IO, TestMessage](settings)
         // mapAsync number should match connection pool connections
-        input
-          .groupWithin(10, 1.second)
-          .mapAsync(256)(c => producer.batchProduce(c, _.int.toString.pure[IO]))
+        producer
+          .batchProduce(input, _.int.toString.pure[IO])
           .compile
           .drain
           .flatMap(_ => consumer.dequeueAsync(256).take(random).compile.drain)
@@ -110,7 +107,7 @@ class ClientItSpec extends IOSpec {
         val consumer = SqsConsumer.instance[IO, TestMessage](settings)
         // mapAsync number should match connection pool connections
         input
-          .mapAsync(256)(producer.produce)
+          .mapAsync(256)(msg => producer.produce(msg))
           .compile
           .drain
           .flatMap(_ => consumer.dequeueAsync(256).take(random).compile.drain)

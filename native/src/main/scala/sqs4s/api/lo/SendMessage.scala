@@ -31,16 +31,14 @@ case class SendMessage[F[_]: Sync: Clock, T](
           delay.map(d => List("DelaySeconds" -> d.toSeconds.toString))
       ).getOrElse(List.empty)
 
-      (attributes.zipWithIndex.toList
+      attributes.zipWithIndex.toList
         .flatMap {
           case ((key, value), index) =>
             List(
               s"MessageAttribute.${index + 1}.Name" -> key,
               s"MessageAttribute.${index + 1}.Value" -> value
             )
-        } ++ queries).sortBy {
-        case (key, _) => key
-      }
+        } ++ queries
     }
 
     SignedRequest.post(params, settings.queue, settings.auth).render

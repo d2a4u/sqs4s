@@ -1,29 +1,48 @@
 package sqs4s.api.hi
 
-import cats.effect.{Clock, Concurrent}
+import cats.effect.{Clock, Concurrent, Sync, Timer}
 import cats.implicits._
 import fs2._
 import org.http4s.client.Client
-import sqs4s.api.lo.{DeleteMessage, ReceiveMessage}
+import sqs4s.api.errors.UnknownDeleteMessageBatchError
+import sqs4s.api.lo.{DeleteMessage, DeleteMessageBatch, ReceiveMessage}
 import sqs4s.api.{ConsumerSettings, SqsSettings}
 import sqs4s.serialization.SqsDeserializer
 
+import scala.concurrent.duration._
+
 trait SqsConsumer[F[_], T] {
   def consume(process: T => F[Unit]): F[Unit]
+
+  // not suitable for FIFO queue
   def consumeAsync(
     maxConcurrent: Int,
+    groupWithin: FiniteDuration = 1.second,
     batch: Int = 256
   )(
-    process: T => F[Unit]
+    process: T => F[Unit],
+    handleErrorWith: T => DeleteMessageBatch.Error => F[Unit]
   ): F[Unit]
+
   def dequeue(): Stream[F, T]
-  def dequeueAsync(maxConcurrent: Int, batch: Int = 256): Stream[F, T]
+
+  // not suitable for FIFO queue
+  def dequeueAsync(
+    maxConcurrent: Int,
+    groupWithin: FiniteDuration = 1.second,
+    batch: Int = 256
+  ): Stream[F, T]
+
   def peek(number: Int): Stream[F, T]
+
   def read: F[List[ReceiveMessage.Result[T]]]
 }
 
 object SqsConsumer {
-  def instance[F[_]: Concurrent: Clock: Client, T: SqsDeserializer[F, ?]](
+  def instance[
+    F[_]: Concurrent: Clock: Timer: Client,
+    T: SqsDeserializer[F, ?]
+  ](
     settings: SqsSettings,
     consumerSettings: ConsumerSettings = ConsumerSettings.default
   ): SqsConsumer[F, T] =
@@ -31,7 +50,7 @@ object SqsConsumer {
 }
 
 abstract class DefaultSqsConsumer[
-  F[_]: Concurrent: Clock: Client,
+  F[_]: Concurrent: Clock: Timer: Client,
   T: SqsDeserializer[F, ?]
 ](
   settings: SqsSettings,
@@ -59,18 +78,41 @@ abstract class DefaultSqsConsumer[
 
   override def consumeAsync(
     maxConcurrent: Int,
+    groupWithin: FiniteDuration = 1.second,
     batch: Int = 256
   )(
-    process: T => F[Unit]
+    process: T => F[Unit],
+    handleErrorWith: T => DeleteMessageBatch.Error => F[Unit]
   ): F[Unit] = {
-    def ack(proc: T => F[Unit]): Pipe[F, ReceiveMessage.Result[T], Unit] =
-      _.mapAsync(maxConcurrent) { res =>
-        proc(res.body).flatMap { _ =>
-          DeleteMessage[F](res.receiptHandle)
-            .runWith(settings)
-            .as(())
+
+    def ack(
+      proc: T => F[Unit]
+    ): Pipe[F, Chunk[ReceiveMessage.Result[T]], Unit] = {
+      _.evalMap { chunk =>
+        val records = chunk.map(res => (res.messageId, res.body)).toList.toMap
+        val entriesF = chunk.traverse { result =>
+          proc(result.body).as {
+            DeleteMessageBatch.Entry(result.messageId, result.receiptHandle)
+          }
         }
+        for {
+          entries <- entriesF
+          batch <- DeleteMessageBatch(entries).runWith(settings)
+          void <- if (batch.errors.isEmpty) {
+            ().pure[F]
+          } else {
+            batch.errors.traverse { error =>
+              Sync[F]
+                .fromOption(
+                  records.get(error.id),
+                  UnknownDeleteMessageBatchError(error)
+                )
+                .flatMap(t => handleErrorWith(t)(error))
+            }.void
+          }
+        } yield void
       }
+    }
 
     Stream
       .constant[F, ReceiveMessage[F, T]](
@@ -83,6 +125,7 @@ abstract class DefaultSqsConsumer[
       )
       .mapAsync(maxConcurrent)(_.runWith(settings))
       .flatMap(Stream.emits)
+      .groupWithin(10, groupWithin)
       .broadcastThrough(ack(process))
       .compile
       .drain
@@ -101,13 +144,21 @@ abstract class DefaultSqsConsumer[
 
   override def dequeueAsync(
     maxConcurrent: Int,
+    groupWithin: FiniteDuration = 1.second,
     batch: Int = 256
   ): Stream[F, T] = {
-    val delete: Pipe[F, ReceiveMessage.Result[T], T] =
-      _.mapAsync(maxConcurrent) { res =>
-        DeleteMessage[F](res.receiptHandle)
-          .runWith(settings)
-          .as(res.body)
+    val delete: Pipe[F, Chunk[ReceiveMessage.Result[T]], Chunk[T]] =
+      _.evalMap { chunk =>
+        val records = chunk.map(res => (res.messageId, res.body)).toList
+        val entries = chunk.map { result =>
+          DeleteMessageBatch.Entry(result.messageId, result.receiptHandle)
+        }
+        DeleteMessageBatch(entries).runWith(settings).map { deleted =>
+          val ids = deleted.successes.map(_.id)
+          Chunk.seq(records.collect {
+            case (k, v) if ids.contains(k) => v
+          })
+        }
       }
 
     Stream
@@ -121,7 +172,9 @@ abstract class DefaultSqsConsumer[
       )
       .mapAsync(maxConcurrent)(_.runWith(settings))
       .flatMap(Stream.emits)
+      .groupWithin(10, groupWithin)
       .broadcastThrough(delete)
+      .flatMap(Stream.chunk)
   }
 
   override def peek(number: Int): Stream[F, T] = {
