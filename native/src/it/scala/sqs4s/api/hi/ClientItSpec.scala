@@ -3,6 +3,7 @@ package sqs4s.api.hi
 import java.time.Instant
 import java.util.concurrent.TimeUnit
 
+import cats.implicits._
 import cats.effect.{Clock, IO}
 import com.danielasfregola.randomdatagenerator.RandomDataGenerator.random
 import fs2.Stream
@@ -16,7 +17,9 @@ import sqs4s.api._
 import sqs4s.internal.aws4.IOSpec
 import sqs4s.serialization.{SqsDeserializer, SqsSerializer}
 
-class ClientSpec extends IOSpec {
+import scala.concurrent.duration._
+
+class ClientItSpec extends IOSpec {
   override implicit lazy val testClock: Clock[IO] = new Clock[IO] {
     def realTime(unit: TimeUnit): IO[Long] = IO.delay {
       Instant.now().toEpochMilli
@@ -32,8 +35,6 @@ class ClientSpec extends IOSpec {
     s"https://sqs.eu-west-1.amazonaws.com/$awsAccountId/test"
   )
   val settings = SqsSettings(queue, AwsAuth(accessKey, secretKey, "eu-west-1"))
-
-  behavior.of("SQS Consumer and Producer")
 
   case class TestMessage(string: String, int: Int, boolean: Boolean)
 
@@ -64,31 +65,55 @@ class ClientSpec extends IOSpec {
       val msg = random[TestMessage]
       Stream
         .random[IO]
-        .map { i =>
-          msg.copy(int = i)
-        }
+        .map(i => msg.copy(int = i))
         .take(n)
     }
   }
 
-  it should "produce and consume messages" in {
-    val random = 10L
-    val input = TestMessage.arbStream(random)
+  behavior.of("SQS Consumer and Producer")
 
-    val outputF = BlazeClientBuilder[IO](ec)
-      .withMaxTotalConnections(100)
+  trait Fixture {
+    val clientResrc = BlazeClientBuilder[IO](ec)
+      .withMaxTotalConnections(256)
       .withMaxWaitQueueLimit(2048)
       .withMaxConnectionsPerRequestKey(Function.const(2048))
       .resource
+  }
+
+  it should "batch produce messages" in new Fixture {
+    val random = 10L
+    val input = TestMessage.arbStream(random)
+
+    val outputF = clientResrc
       .use { implicit client =>
         val producer = SqsProducer.instance[IO, TestMessage](settings)
         val consumer = SqsConsumer.instance[IO, TestMessage](settings)
         // mapAsync number should match connection pool connections
         input
-          .mapAsync(2048)(producer.produce)
+          .groupWithin(10, 1.second)
+          .mapAsync(256)(c => producer.batchProduce(c, _.int.toString.pure[IO]))
           .compile
           .drain
-          .flatMap(_ => consumer.dequeueAsync(2048).take(random).compile.drain)
+          .flatMap(_ => consumer.dequeueAsync(256).take(random).compile.drain)
+      }
+    val o = outputF.unsafeRunSync()
+    o shouldBe a[Unit]
+  }
+
+  it should "produce and consume messages" in new Fixture {
+    val random = 10L
+    val input = TestMessage.arbStream(random)
+
+    val outputF = clientResrc
+      .use { implicit client =>
+        val producer = SqsProducer.instance[IO, TestMessage](settings)
+        val consumer = SqsConsumer.instance[IO, TestMessage](settings)
+        // mapAsync number should match connection pool connections
+        input
+          .mapAsync(256)(producer.produce)
+          .compile
+          .drain
+          .flatMap(_ => consumer.dequeueAsync(256).take(random).compile.drain)
       }
     val o = outputF.unsafeRunSync()
     o shouldBe a[Unit]
