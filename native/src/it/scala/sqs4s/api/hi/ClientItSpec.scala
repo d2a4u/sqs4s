@@ -74,7 +74,7 @@ class ClientItSpec extends IOSpec {
 
   trait Fixture {
     val clientResrc = BlazeClientBuilder[IO](ec)
-      .withMaxTotalConnections(100)
+      .withMaxTotalConnections(256)
       .withMaxWaitQueueLimit(2048)
       .withMaxConnectionsPerRequestKey(Function.const(2048))
       .resource
@@ -91,12 +91,10 @@ class ClientItSpec extends IOSpec {
         // mapAsync number should match connection pool connections
         input
           .groupWithin(10, 1.second)
-          .mapAsync(2048)(
-            c => producer.batchProduce(c, _.int.toString.pure[IO])
-          )
+          .mapAsync(256)(c => producer.batchProduce(c, _.int.toString.pure[IO]))
           .compile
           .drain
-          .flatMap(_ => consumer.dequeueAsync(2048).take(random).compile.drain)
+          .flatMap(_ => consumer.dequeueAsync(256).take(random).compile.drain)
       }
     val o = outputF.unsafeRunSync()
     o shouldBe a[Unit]
@@ -112,10 +110,10 @@ class ClientItSpec extends IOSpec {
         val consumer = SqsConsumer.instance[IO, TestMessage](settings)
         // mapAsync number should match connection pool connections
         input
-          .mapAsync(2048)(producer.produce)
+          .mapAsync(256)(producer.produce)
           .compile
           .drain
-          .flatMap(_ => consumer.dequeueAsync(2048).take(random).compile.drain)
+          .flatMap(_ => consumer.dequeueAsync(256).take(random).compile.drain)
       }
     val o = outputF.unsafeRunSync()
     o shouldBe a[Unit]
