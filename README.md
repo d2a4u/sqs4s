@@ -92,7 +92,7 @@ val created = BlazeClientBuilder[IO](ec).resource
 
 ```scala
 BlazeClientBuilder[IO](ec)
-  .withMaxTotalConnections(100)
+  .withMaxTotalConnections(128)
   .withMaxWaitQueueLimit(2048)
   .withMaxConnectionsPerRequestKey(Function.const(2048))
   .resource
@@ -101,10 +101,10 @@ BlazeClientBuilder[IO](ec)
     val consumer = SqsConsumer.instance[IO, String](settings)
     // mapAsync number should match connection pool connections
     Stream.emits[IO, String](List.fill(10)("Test"))
-      .mapAsync(2048)(producer.produce)
+      .mapAsync(128)(producer.produce)
       .compile
       .drain
-      .flatMap(_ => consumer.dequeueAsync(2048).take(10).compile.drain)
+      .flatMap(_ => consumer.dequeueAsync(128).take(10).compile.drain)
   }.unsafeRunSync()
 ```
 
