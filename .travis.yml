@@ -5,12 +5,12 @@ services:
 jobs:
   include:
     - stage: test
-      if: branch != master
+      if: branch != master OR type = pull_request
       script:
         - sbt ++$TRAVIS_SCALA_VERSION clean update coverage native/test coverageReport
       jdk: openjdk11
     - stage: master
-      if: branch = master
+      if: branch = master AND type != pull_request
       script:
         - sbt ++$TRAVIS_SCALA_VERSION clean update coverage native/test native/it:test coverageReport
       jdk: openjdk11

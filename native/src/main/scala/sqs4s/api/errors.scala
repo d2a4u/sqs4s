@@ -9,6 +9,8 @@ import scala.xml.Elem
 object errors {
   sealed trait SqsError extends Exception
 
+  case object RetriableServerError extends SqsError
+
   case class BasicAwsSqsError(raw: Elem) extends SqsError {
     override def getMessage: String =
       s"Raw: ${raw.toString}"
