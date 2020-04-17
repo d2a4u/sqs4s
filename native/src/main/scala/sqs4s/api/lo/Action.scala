@@ -3,9 +3,9 @@ package sqs4s.api.lo
 import cats.implicits._
 import cats.effect.Sync
 import org.http4s.client.Client
-import org.http4s.{Request, Response}
+import org.http4s.{Request, Response, Status}
 import sqs4s.api.SqsSettings
-import sqs4s.api.errors.SqsError
+import sqs4s.api.errors.{RetriableServerError, SqsError}
 import org.http4s.scalaxml._
 
 import scala.xml.{Elem, XML}
@@ -22,10 +22,14 @@ abstract class Action[F[_]: Sync, T] {
   def parseResponse(response: Elem): F[T]
 
   val handleError: Response[F] => F[Throwable] = error => {
-    for {
-      bytes <- error.body.compile.toChunk
-      xml <- Sync[F].delay(XML.loadString(new String(bytes.toArray)))
-    } yield handleXmlError(xml)
+    if (error.status.responseClass == Status.ServerError) {
+      RetriableServerError.pure[F].widen[Throwable]
+    } else {
+      for {
+        bytes <- error.body.compile.toChunk
+        xml <- Sync[F].delay(XML.loadString(new String(bytes.toArray)))
+      } yield handleXmlError(xml)
+    }
   }
 
   val handleXmlError: Elem => Throwable = error => SqsError.fromXml(error)

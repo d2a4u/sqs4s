@@ -2,11 +2,14 @@ package sqs4s.api
 
 import cats.Show
 import cats.implicits._
+import sqs4s.api.lo.DeleteMessageBatch
 
 import scala.xml.Elem
 
 object errors {
   sealed trait SqsError extends Exception
+
+  case object RetriableServerError extends SqsError
 
   case class BasicAwsSqsError(raw: Elem) extends SqsError {
     override def getMessage: String =
@@ -32,6 +35,15 @@ object errors {
          |Code: $code
          |Request ID: $requestId
          |Message: $message""".stripMargin
+  }
+
+  case class UnknownDeleteMessageBatchError(error: DeleteMessageBatch.Error)
+      extends SqsError {
+    override def getMessage: String =
+      s"""ID: ${error.id}
+         |Code: ${error.code}
+         |Sender fault: ${error.senderFault}
+         |Message: ${error.message.getOrElse("")}""".stripMargin
   }
 
   object SqsError {

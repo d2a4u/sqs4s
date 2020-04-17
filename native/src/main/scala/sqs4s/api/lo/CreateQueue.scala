@@ -34,16 +34,14 @@ case class CreateQueue[F[_]: Sync: Clock](
     )
 
     val params =
-      (attributes.zipWithIndex
+      attributes.zipWithIndex
         .flatMap {
           case ((key, value), index) =>
             List(
               s"Attribute.${index + 1}.Name" -> key,
               s"Attribute.${index + 1}.Value" -> value
             )
-        } ++ queries).sortBy {
-        case (key, _) => key
-      }
+        } ++ queries
 
     SignedRequest.get[F](params, sqsEndpoint, setting.auth).render
   }

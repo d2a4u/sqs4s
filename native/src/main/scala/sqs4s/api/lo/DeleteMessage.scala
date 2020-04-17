@@ -16,9 +16,7 @@ case class DeleteMessage[F[_]: Sync: Clock](receiptHandle: String)
       "Action" -> "DeleteMessage",
       "ReceiptHandle" -> receiptHandle,
       "Version" -> "2012-11-05"
-    ).sortBy {
-      case (key, _) => key
-    }
+    )
 
     SignedRequest.post(params, settings.queue, settings.auth).render
   }
