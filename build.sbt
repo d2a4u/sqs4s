@@ -21,7 +21,7 @@ lazy val dependencies = Seq(
 )
 
 lazy val testDependencies = Seq(
-  "org.scalatest"       %% "scalatest"             % "3.0.8",
+  "org.scalatest"       %% "scalatest"             % "3.1.2",
   "com.danielasfregola" %% "random-data-generator" % "2.7",
   "ch.qos.logback"      % "logback-classic"        % "1.2.3"
 ) ++ circe
