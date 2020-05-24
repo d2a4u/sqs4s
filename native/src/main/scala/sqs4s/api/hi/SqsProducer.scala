@@ -1,10 +1,12 @@
 package sqs4s.api.hi
 
+import cats.MonadError
 import cats.effect.{Clock, Concurrent, Timer}
 import cats.implicits._
 import fs2.Stream
 import org.http4s.client.Client
 import sqs4s.api.SqsSettings
+import sqs4s.api.errors.MessageTooLarge
 import sqs4s.api.lo.{SendMessage, SendMessageBatch}
 import sqs4s.serialization.SqsSerializer
 
@@ -54,19 +56,26 @@ object SqsProducer {
       groupId: Option[String] = None,
       groupWithin: FiniteDuration = 1.second,
       maxConcurrent: Int = 128
-    ): Stream[F, SendMessageBatch.Result] = {
+    ): Stream[F, SendMessageBatch.Result] =
       messages
         .groupWithin(10, groupWithin)
         .mapAsync(maxConcurrent) { chunk =>
-          chunk
-            .traverse { t =>
-              id(t).map { i =>
-                SendMessageBatch
-                  .Entry(i, t, attributes, delay, dedupId, groupId)
+          val totalSize = chunk
+            .map(t => SqsSerializer.apply[T].serialize(t).getBytes.length)
+            .fold
+          if (totalSize <= 256000) {
+            chunk
+              .traverse { t =>
+                id(t).map { i =>
+                  SendMessageBatch
+                    .Entry(i, t, attributes, delay, dedupId, groupId)
+                }
               }
-            }
-            .flatMap(SendMessageBatch(_).runWith(settings))
+              .flatMap(SendMessageBatch(_).runWith(settings))
+          } else {
+            MonadError[F, Throwable]
+              .raiseError[SendMessageBatch.Result](MessageTooLarge)
+          }
         }
-    }
   }
 }

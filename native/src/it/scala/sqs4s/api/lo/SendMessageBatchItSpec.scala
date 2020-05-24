@@ -28,7 +28,7 @@ class SendMessageBatchItSpec extends IOSpec {
     def monotonic(unit: TimeUnit): IO[Long] = IO(testCurrentMillis)
   }
 
-  behavior.of("SendMessageBatch integration test")
+  behavior.of("SendMessage integration test")
 
   it should "raise error for error response" in {
     BlazeClientBuilder[IO](ec).resource
