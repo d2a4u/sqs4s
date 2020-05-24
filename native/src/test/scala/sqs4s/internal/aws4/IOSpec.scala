@@ -4,13 +4,14 @@ import java.time.format.DateTimeFormatter
 import java.time.{LocalDateTime, ZoneOffset}
 
 import cats.effect._
-import org.scalatest.{FlatSpecLike, Matchers}
 
 import scala.concurrent.ExecutionContext
 import scala.concurrent.ExecutionContext.global
 import scala.concurrent.duration.TimeUnit
+import org.scalatest.flatspec.AnyFlatSpecLike
+import org.scalatest.matchers.should.Matchers
 
-trait IOSpec extends FlatSpecLike with Matchers {
+trait IOSpec extends AnyFlatSpecLike with Matchers {
 
   val testTimeStamp = "20150830T123600Z"
   val testDateTime =
