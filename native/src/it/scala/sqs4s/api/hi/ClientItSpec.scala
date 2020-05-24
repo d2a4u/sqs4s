@@ -3,10 +3,11 @@ package sqs4s.api.hi
 import java.time.Instant
 import java.util.concurrent.TimeUnit
 
+import cats.effect.concurrent.Ref
+import cats.effect.{Clock, IO, Resource}
 import cats.implicits._
-import cats.effect.{Clock, IO}
-import com.danielasfregola.randomdatagenerator.RandomDataGenerator.random
 import fs2.Stream
+import fs2.concurrent.SignallingRef
 import io.circe.generic.semiauto._
 import io.circe.syntax._
 import io.circe.{parser, _}
@@ -16,6 +17,8 @@ import org.scalacheck.{Arbitrary, Gen}
 import sqs4s.api._
 import sqs4s.internal.aws4.IOSpec
 import sqs4s.serialization.{SqsDeserializer, SqsSerializer}
+
+import scala.concurrent.duration._
 
 class ClientItSpec extends IOSpec {
   override implicit lazy val testClock: Clock[IO] = new Clock[IO] {
@@ -33,6 +36,14 @@ class ClientItSpec extends IOSpec {
     s"https://sqs.eu-west-1.amazonaws.com/$awsAccountId/test"
   )
   val settings = SqsSettings(queue, AwsAuth(accessKey, secretKey, "eu-west-1"))
+  val consumerSettings = ConsumerSettings(
+    queue = settings.queue,
+    auth = settings.auth,
+    waitTimeSeconds = Some(1),
+    pollingRate = 2.seconds
+  )
+
+  def generate[T](implicit arb: Arbitrary[T]) = arb.arbitrary.sample.get
 
   case class TestMessage(string: String, int: Int, boolean: Boolean)
 
@@ -60,7 +71,7 @@ class ClientItSpec extends IOSpec {
     }
 
     def arbStream(n: Long): Stream[IO, TestMessage] = {
-      val msg = random[TestMessage]
+      val msg = generate[TestMessage]
       Stream
         .random[IO]
         .map(i => msg.copy(int = i))
@@ -79,40 +90,108 @@ class ClientItSpec extends IOSpec {
   }
 
   it should "batch produce messages" in new Fixture {
-    val random = 20L
-    val input = TestMessage.arbStream(random)
+    val numOfMsgs = 22L
+    val input = TestMessage.arbStream(numOfMsgs)
 
     val outputF = clientResrc
       .use { implicit client =>
         val producer = SqsProducer.instance[IO, TestMessage](settings)
-        val consumer = SqsConsumer.instance[IO, TestMessage](settings)
-        // mapAsync number should match connection pool connections
+        val consumer = SqsConsumer.instance[IO, TestMessage](consumerSettings)
         producer
           .batchProduce(input, _.int.toString.pure[IO])
           .compile
           .drain
-          .flatMap(_ => consumer.dequeueAsync(256).take(random).compile.drain)
+          .flatMap(
+            _ => consumer.dequeueAsync(256).take(numOfMsgs).compile.drain
+          )
       }
     val o = outputF.unsafeRunSync()
     o shouldBe a[Unit]
   }
 
-  it should "produce and consume messages" in new Fixture {
-    val random = 10L
-    val input = TestMessage.arbStream(random)
+  it should "batch consume messages" in new Fixture {
+    val numOfMsgs = 22L
+    val input = TestMessage.arbStream(numOfMsgs).compile.toList.unsafeRunSync()
+    val inputStream = Stream[IO, TestMessage](input: _*)
+    val consumerSettings = ConsumerSettings(
+      queue = settings.queue,
+      auth = settings.auth,
+      waitTimeSeconds = Some(1),
+      pollingRate = 2.seconds
+    )
+
+    val ref = Resource.liftF(Ref.of[IO, List[TestMessage]](List.empty))
+
+    val resources = for {
+      r <- ref
+      interrupter <- Resource.liftF(SignallingRef[IO, Boolean](false))
+      client <- clientResrc
+    } yield (r, interrupter, client)
+
+    val outputF = resources.use {
+      case (ref, interrupter, client) =>
+        implicit val c = client
+        val producer = SqsProducer.instance[IO, TestMessage](settings)
+        val consumer = SqsConsumer.instance[IO, TestMessage](consumerSettings)
+        producer
+          .batchProduce(inputStream, _.int.toString.pure[IO])
+          .compile
+          .drain
+          .flatMap { _ =>
+            consumer
+              .consumeAsync(256)(msg => {
+                def loop(): IO[Unit] = {
+                  ref.access.flatMap {
+                    case (list, setter) =>
+                      val set = setter(list :+ msg).flatMap { updated =>
+                        if (updated) {
+                          ().pure[IO]
+                        } else {
+                          loop()
+                        }
+                      }
+                      if (list.size == numOfMsgs - 1)
+                        set >> interrupter.set(true)
+                      else set
+                  }
+                }
+
+                loop()
+              })
+              .interruptWhen(interrupter)
+              .compile
+              .drain
+          } >> ref.get
+    }
+
+    outputF
+      .unsafeRunSync() should contain theSameElementsAs input
+  }
+
+  it should "produce and dequeue messages" in new Fixture {
+    val numOfMsgs = 22L
+    val input = TestMessage.arbStream(numOfMsgs).compile.toList.unsafeRunSync()
+    val inputStream = Stream[IO, TestMessage](input: _*)
+    val consumerSettings = ConsumerSettings(
+      queue = settings.queue,
+      auth = settings.auth,
+      waitTimeSeconds = Some(1),
+      pollingRate = 2.seconds
+    )
 
     val outputF = clientResrc
       .use { implicit client =>
         val producer = SqsProducer.instance[IO, TestMessage](settings)
-        val consumer = SqsConsumer.instance[IO, TestMessage](settings)
-        // mapAsync number should match connection pool connections
-        input
+        val consumer = SqsConsumer.instance[IO, TestMessage](consumerSettings)
+        inputStream
           .mapAsync(256)(msg => producer.produce(msg))
           .compile
           .drain
-          .flatMap(_ => consumer.dequeueAsync(256).take(random).compile.drain)
+          .flatMap(
+            _ => consumer.dequeueAsync(256).take(numOfMsgs).compile.toList
+          )
       }
-    val o = outputF.unsafeRunSync()
-    o shouldBe a[Unit]
+    outputF.unsafeRunSync() should contain theSameElementsAs input
   }
+
 }

@@ -10,8 +10,8 @@ import sqs4s.api.errors.UnexpectedResponseError
 import scala.xml.Elem
 
 case class DeleteMessageBatch[F[_]: Sync: Clock](
-  entries: Chunk[DeleteMessageBatch.Entry])
-    extends Action[F, DeleteMessageBatch.Result] {
+  entries: Chunk[DeleteMessageBatch.Entry]
+) extends Action[F, DeleteMessageBatch.Result] {
 
   private val receiptHandles = entries
     .map { entry =>
@@ -80,7 +80,8 @@ object DeleteMessageBatch {
   case class Result(
     requestId: String,
     successes: List[Success],
-    errors: List[Error])
+    errors: List[Error]
+  )
 
   case class Success(id: String)
 
@@ -88,5 +89,6 @@ object DeleteMessageBatch {
     id: String,
     code: String,
     message: Option[String],
-    senderFault: Boolean)
+    senderFault: Boolean
+  )
 }

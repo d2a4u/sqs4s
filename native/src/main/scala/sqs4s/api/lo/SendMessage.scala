@@ -78,5 +78,6 @@ object SendMessage {
     messageBodyMd5: String,
     messageAttributesMd5: Option[String],
     messageId: String,
-    requestId: String)
+    requestId: String
+  )
 }

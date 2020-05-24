@@ -3,13 +3,11 @@ package sqs4s.api.lo
 import cats.effect.{Clock, IO}
 import org.http4s.Uri
 import org.http4s.client.blaze.BlazeClientBuilder
-import org.http4s.implicits._
-import sqs4s.api.errors.{AwsSqsError, UnexpectedResponseError}
+import sqs4s.api.errors.AwsSqsError
 import sqs4s.api.{AwsAuth, SqsSettings}
 import sqs4s.internal.aws4.IOSpec
 
 import scala.concurrent.duration.TimeUnit
-import scala.xml.XML
 
 class DeleteMessageItSpec extends IOSpec {
 
