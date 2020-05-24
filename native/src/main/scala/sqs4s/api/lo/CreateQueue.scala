@@ -16,8 +16,8 @@ case class CreateQueue[F[_]: Sync: Clock](
   delay: Duration = DelaySeconds,
   maxMessageSize: Int = MaxMessageSize,
   messageRetentionPeriod: Duration = MessageRetentionPeriod,
-  visibilityTimeout: Int = VisibilityTimeout)
-    extends Action[F, CreateQueue.Result] {
+  visibilityTimeout: Int = VisibilityTimeout
+) extends Action[F, CreateQueue.Result] {
 
   def mkRequest(setting: SqsSettings): F[Request[F]] = {
     val attributes = List(

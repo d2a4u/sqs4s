@@ -6,7 +6,6 @@ import java.util.concurrent.TimeUnit
 import cats.effect.concurrent.Ref
 import cats.effect.{Clock, IO, Resource}
 import cats.implicits._
-import com.danielasfregola.randomdatagenerator.RandomDataGenerator.random
 import fs2.Stream
 import fs2.concurrent.SignallingRef
 import io.circe.generic.semiauto._
@@ -44,6 +43,8 @@ class ClientItSpec extends IOSpec {
     pollingRate = 2.seconds
   )
 
+  def generate[T](implicit arb: Arbitrary[T]) = arb.arbitrary.sample.get
+
   case class TestMessage(string: String, int: Int, boolean: Boolean)
 
   object TestMessage {
@@ -70,7 +71,7 @@ class ClientItSpec extends IOSpec {
     }
 
     def arbStream(n: Long): Stream[IO, TestMessage] = {
-      val msg = random[TestMessage]
+      val msg = generate[TestMessage]
       Stream
         .random[IO]
         .map(i => msg.copy(int = i))

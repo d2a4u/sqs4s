@@ -13,7 +13,8 @@ case class SignedRequest[F[_]: Sync: Clock](
   params: List[(String, String)],
   request: Request[F],
   url: Uri,
-  auth: AwsAuth) {
+  auth: AwsAuth
+) {
   def render: F[Request[F]] = {
     for {
       millis <- Clock[F].realTime(TimeUnit.MILLISECONDS)

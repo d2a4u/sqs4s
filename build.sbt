@@ -3,7 +3,7 @@ import sbt.addCompilerPlugin
 
 val circeVersion = "0.11.2"
 val fs2Version = "1.0.5"
-val http4sVersion = "0.20.6"
+val http4sVersion = "0.20.23"
 val logbackVersion = "1.2.3"
 
 val circe = Seq(
@@ -16,16 +16,16 @@ lazy val dependencies = Seq(
   "org.http4s" %% "http4s-blaze-client" % http4sVersion,
   "org.http4s" %% "http4s-scala-xml" % http4sVersion,
   "org.scala-lang.modules" %% "scala-parser-combinators" % "1.1.2",
-  "io.chrisdavenport" %% "log4cats-slf4j" % "1.0.1",
+  "io.chrisdavenport" %% "log4cats-slf4j" % "1.1.1",
   "co.fs2" %% "fs2-core" % fs2Version,
   "javax.xml.bind" % "jaxb-api" % "2.4.0-b180830.0359"
 )
 
 lazy val testDependencies = Seq(
   "org.scalatest" %% "scalatest" % "3.0.8",
-  "com.danielasfregola" %% "random-data-generator" % "2.7",
   "ch.qos.logback" % "logback-classic" % logbackVersion,
-  "ch.qos.logback" % "logback-core" % logbackVersion
+  "ch.qos.logback" % "logback-core" % logbackVersion,
+  "org.scalacheck" %% "scalacheck" % "1.14.1"
 ) ++ circe
 
 lazy val commonSettings = Seq(
