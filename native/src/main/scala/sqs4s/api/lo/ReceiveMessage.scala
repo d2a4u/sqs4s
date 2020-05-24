@@ -2,6 +2,7 @@ package sqs4s.api.lo
 
 import cats.effect.{Clock, Sync}
 import cats.implicits._
+import fs2.Chunk
 import org.http4s.Request
 import sqs4s.serialization.SqsDeserializer
 import sqs4s.api.SqsSettings
@@ -14,7 +15,7 @@ case class ReceiveMessage[F[_]: Sync: Clock, T](
   visibilityTimeout: Int = 15,
   waitTimeSeconds: Option[Int] = None
 )(implicit decoder: SqsDeserializer[F, T])
-    extends Action[F, List[ReceiveMessage.Result[T]]] {
+    extends Action[F, Chunk[ReceiveMessage.Result[T]]] {
 
   def mkRequest(settings: SqsSettings): F[Request[F]] = {
     val params = List(
@@ -28,10 +29,10 @@ case class ReceiveMessage[F[_]: Sync: Clock, T](
     SignedRequest.post(params, settings.queue, settings.auth).render
   }
 
-  def parseResponse(response: Elem): F[List[ReceiveMessage.Result[T]]] = {
+  def parseResponse(response: Elem): F[Chunk[ReceiveMessage.Result[T]]] = {
     val msgs = response \\ "Message"
     if (msgs.nonEmpty) {
-      msgs.toList.traverse { msg =>
+      Chunk(msgs: _*).traverse { msg =>
         val md5Body = (msg \ "MD5OfBody").text
         val raw = (msg \ "Body").text
         val attributes = (msg \ "Attribute")
@@ -53,7 +54,7 @@ case class ReceiveMessage[F[_]: Sync: Clock, T](
           }
       }
     } else {
-      List.empty[ReceiveMessage.Result[T]].pure[F]
+      Chunk.empty[ReceiveMessage.Result[T]].pure[F]
     }
   }
 }
@@ -65,5 +66,6 @@ object ReceiveMessage {
     body: T,
     rawBody: String,
     md5OfBody: String,
-    attributes: Map[String, String])
+    attributes: Map[String, String]
+  )
 }
