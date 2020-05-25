@@ -3,7 +3,7 @@ import sbt.addCompilerPlugin
 
 val circeVersion = "0.11.2"
 val fs2Version = "1.0.5"
-val http4sVersion = "0.20.23"
+val http4sVersion = "0.21.4"
 val logbackVersion = "1.2.3"
 
 val circe = Seq(
