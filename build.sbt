@@ -25,7 +25,7 @@ lazy val testDependencies = Seq(
   "org.scalatest" %% "scalatest" % "3.1.2",
   "ch.qos.logback" % "logback-classic" % logbackVersion,
   "ch.qos.logback" % "logback-core" % logbackVersion,
-  "org.scalacheck" %% "scalacheck" % "1.14.1"
+  "org.scalacheck" %% "scalacheck" % "1.14.3"
 ) ++ circe
 
 lazy val commonSettings = Seq(
