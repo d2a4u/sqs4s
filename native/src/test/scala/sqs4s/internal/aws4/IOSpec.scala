@@ -21,11 +21,12 @@ trait IOSpec extends AnyFlatSpecLike with Matchers {
   implicit val cs: ContextShift[IO] = IO.contextShift(global)
   implicit val ec: ExecutionContext = global
   implicit lazy val testClock = new Clock[IO] {
-    def realTime(unit: TimeUnit): IO[Long] = IO {
-      testDateTime
-        .toInstant(ZoneOffset.UTC)
-        .toEpochMilli()
-    }
+    def realTime(unit: TimeUnit): IO[Long] =
+      IO {
+        testDateTime
+          .toInstant(ZoneOffset.UTC)
+          .toEpochMilli()
+      }
     def monotonic(unit: TimeUnit): IO[Long] = IO(0L)
   }
 }

@@ -104,8 +104,10 @@ class SendMessageSpec extends IOSpec {
       }
       .attempt
       .unsafeRunSync()
-      .left
-      .get shouldBe a[UnexpectedResponseError]
+      .swap
+      .getOrElse(throw new Exception("Testing failure")) shouldBe a[
+      UnexpectedResponseError
+    ]
   }
 
 }

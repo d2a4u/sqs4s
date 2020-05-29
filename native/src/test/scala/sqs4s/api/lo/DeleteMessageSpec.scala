@@ -34,7 +34,7 @@ class DeleteMessageSpec extends IOSpec {
       DeleteMessage[IO](receiptHandle).mkRequest(settings).unsafeRunSync()
     val params = request.uri.query.params
     params.get("Action") shouldEqual Some("DeleteMessage")
-    params.get("Version").nonEmpty shouldEqual true
+    params.contains("Version") shouldEqual true
     request.headers.exists(_.name == "Expires".ci) shouldEqual true
   }
 
@@ -70,7 +70,9 @@ class DeleteMessageSpec extends IOSpec {
       }
       .attempt
       .unsafeRunSync()
-      .left
-      .get shouldBe a[UnexpectedResponseError]
+      .swap
+      .getOrElse(throw new Exception("Testing failure")) shouldBe a[
+      UnexpectedResponseError
+    ]
   }
 }

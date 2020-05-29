@@ -3,6 +3,7 @@ package sqs4s.internal.aws4.aws4suite
 import cats.effect.IO
 import org.http4s.Method._
 import org.http4s._
+import org.http4s.implicits._
 import org.http4s.client.dsl.io._
 import sqs4s.internal.aws4.IOSpec
 import sqs4s.internal.aws4.common._

@@ -43,7 +43,7 @@ class DeleteMessageBatchSpec extends IOSpec {
         .unsafeRunSync()
     val params = request.uri.query.params
     params("Action") shouldEqual "DeleteMessageBatch"
-    params.get("Version").nonEmpty shouldEqual true
+    params.contains("Version") shouldEqual true
     params("DeleteMessageBatchRequestEntry.1.Id") shouldEqual "1"
     params("DeleteMessageBatchRequestEntry.2.Id") shouldEqual "2"
     params("DeleteMessageBatchRequestEntry.1.ReceiptHandle") shouldEqual "test1"
@@ -96,7 +96,9 @@ class DeleteMessageBatchSpec extends IOSpec {
       }
       .attempt
       .unsafeRunSync()
-      .left
-      .get shouldBe a[UnexpectedResponseError]
+      .swap
+      .getOrElse(throw new Exception("Testing failure")) shouldBe a[
+      UnexpectedResponseError
+    ]
   }
 }

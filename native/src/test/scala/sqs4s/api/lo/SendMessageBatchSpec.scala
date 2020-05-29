@@ -57,27 +57,39 @@ class SendMessageBatchSpec extends IOSpec {
         .unsafeRunSync()
     val params = request.uri.query.params
     params("Action") shouldEqual "SendMessageBatch"
-    params.get("Version").nonEmpty shouldEqual true
+    params.contains("Version") shouldEqual true
     params("SendMessageBatchRequestEntry.1.Id") shouldEqual "1"
     params("SendMessageBatchRequestEntry.2.Id") shouldEqual "2"
     params("SendMessageBatchRequestEntry.1.MessageBody") shouldEqual "test1"
     params("SendMessageBatchRequestEntry.2.MessageBody") shouldEqual "test2"
-    attr(params("SendMessageBatchRequestEntry.1.MessageAttribute.1.Name")) shouldEqual params(
+    attr(
+      params("SendMessageBatchRequestEntry.1.MessageAttribute.1.Name")
+    ) shouldEqual params(
       "SendMessageBatchRequestEntry.1.MessageAttribute.1.Value"
     )
-    attr(params("SendMessageBatchRequestEntry.1.MessageAttribute.2.Name")) shouldEqual params(
+    attr(
+      params("SendMessageBatchRequestEntry.1.MessageAttribute.2.Name")
+    ) shouldEqual params(
       "SendMessageBatchRequestEntry.1.MessageAttribute.2.Value"
     )
-    attr(params("SendMessageBatchRequestEntry.2.MessageAttribute.1.Name")) shouldEqual params(
+    attr(
+      params("SendMessageBatchRequestEntry.2.MessageAttribute.1.Name")
+    ) shouldEqual params(
       "SendMessageBatchRequestEntry.2.MessageAttribute.1.Value"
     )
-    attr(params("SendMessageBatchRequestEntry.2.MessageAttribute.2.Name")) shouldEqual params(
+    attr(
+      params("SendMessageBatchRequestEntry.2.MessageAttribute.2.Name")
+    ) shouldEqual params(
       "SendMessageBatchRequestEntry.2.MessageAttribute.2.Value"
     )
     params("SendMessageBatchRequestEntry.1.DelaySeconds") shouldEqual "2"
     params("SendMessageBatchRequestEntry.2.DelaySeconds") shouldEqual "2"
-    params("SendMessageBatchRequestEntry.1.MessageDeduplicationId") shouldEqual "dedup1"
-    params("SendMessageBatchRequestEntry.2.MessageDeduplicationId") shouldEqual "dedup2"
+    params(
+      "SendMessageBatchRequestEntry.1.MessageDeduplicationId"
+    ) shouldEqual "dedup1"
+    params(
+      "SendMessageBatchRequestEntry.2.MessageDeduplicationId"
+    ) shouldEqual "dedup2"
     params("SendMessageBatchRequestEntry.1.MessageGroupId") shouldEqual "group1"
     params("SendMessageBatchRequestEntry.2.MessageGroupId") shouldEqual "group2"
     request.headers.exists(_.name == "Expires".ci) shouldEqual true
@@ -145,7 +157,9 @@ class SendMessageBatchSpec extends IOSpec {
       }
       .attempt
       .unsafeRunSync()
-      .left
-      .get shouldBe a[UnexpectedResponseError]
+      .swap
+      .getOrElse(throw new Exception("Testing failure")) shouldBe a[
+      UnexpectedResponseError
+    ]
   }
 }

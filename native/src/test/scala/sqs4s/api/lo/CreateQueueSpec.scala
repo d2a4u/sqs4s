@@ -36,7 +36,7 @@ class CreateQueueSpec extends IOSpec {
     val params = request.uri.query.params
     params.get("Action") shouldEqual Some("CreateQueue")
     params.get("QueueName") shouldEqual Some("test")
-    params.get("Version").nonEmpty shouldEqual true
+    params.contains("Version") shouldEqual true
     request.headers.exists(_.name == "Expires".ci) shouldEqual true
   }
 
@@ -78,7 +78,9 @@ class CreateQueueSpec extends IOSpec {
       }
       .attempt
       .unsafeRunSync()
-      .left
-      .get shouldBe a[UnexpectedResponseError]
+      .swap
+      .getOrElse(throw new Exception("Testing failure")) shouldBe a[
+      UnexpectedResponseError
+    ]
   }
 }
