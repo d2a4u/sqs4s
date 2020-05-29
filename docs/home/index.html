@@ -1,0 +1,88 @@
+<!DOCTYPE html><html lang="en"><head><meta charSet="utf-8"/><meta http-equiv="X-UA-Compatible" content="IE=edge"/><title>sqs4s · sqs4s</title><meta name="viewport" content="width=device-width"/><meta name="generator" content="Docusaurus"/><meta name="description" content="# sqs4s"/><meta name="docsearch:language" content="en"/><meta property="og:title" content="sqs4s · sqs4s"/><meta property="og:type" content="website"/><meta property="og:url" content="https://d2a4u.github.io/sqs4s/"/><meta property="og:description" content="# sqs4s"/><meta property="og:image" content="https://d2a4u.github.io/sqs4s/img/undraw_online.svg"/><meta name="twitter:card" content="summary"/><meta name="twitter:image" content="https://d2a4u.github.io/sqs4s/img/undraw_tweetstorm.svg"/><link rel="shortcut icon" href="/sqs4s/img/favicon.ico"/><link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/default.min.css"/><script type="text/javascript" src="https://buttons.github.io/buttons.js"></script><script src="/sqs4s/js/scrollSpy.js"></script><link rel="stylesheet" href="/sqs4s/css/main.css"/><script src="/sqs4s/js/codetabs.js"></script></head><body class="sideNavVisible separateOnPageNav"><div class="fixedHeaderContainer"><div class="headerWrapper wrapper"><header><a href="/sqs4s/"><img class="logo" src="/sqs4s/img/favicon.ico" alt="sqs4s"/><h2 class="headerTitleWithLogo">sqs4s</h2></a><div class="navigationWrapper navigationSlider"><nav class="slidingNav"><ul class="nav-site nav-site-internal"><li class=""><a href="/sqs4s/docs/documentation" target="_self">Documentation</a></li><li class=""><a href="https://github.com/d2a4u/sqs4s" target="_self">Github</a></li></ul></nav></div></header></div></div><div class="navPusher"><div class="docMainWrapper wrapper"><div class="container mainContainer docsContainer"><div class="wrapper"><div class="post"><header class="postHeader"><h1 id="__docusaurus" class="postHeaderTitle">sqs4s</h1></header><article><div><span><h1><a class="anchor" aria-hidden="true" id="sqs4s"></a><a href="#sqs4s" aria-hidden="true" class="hash-link"><svg class="hash-link-icon" aria-hidden="true" height="16" version="1.1" viewBox="0 0 16 16" width="16"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>sqs4s</h1>
+<p><a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT"></a>
+<a href="https://travis-ci.com/d2a4u/sqs4s"><img src="https://travis-ci.com/d2a4u/sqs4s.svg?branch=master" alt="Build Status"></a>
+<a href="https://codecov.io/gh/d2a4u/sqs4s"><img src="https://codecov.io/gh/d2a4u/sqs4s/branch/master/graph/badge.svg" alt="codecov"></a>
+<a href="https://www.codacy.com/app/d2a4u/sqs4s?utm_source=github.com&amp;amp;utm_medium=referral&amp;amp;utm_content=d2a4u/sqs4s&amp;amp;utm_campaign=Badge_Grade"><img src="https://api.codacy.com/project/badge/Grade/8a331de033cb4700acddb175af4148bb" alt="Codacy Badge"></a>
+<a href="https://bintray.com/d2a4u/sqs4s/sqs4s-native/_latestVersion"><img src="https://api.bintray.com/packages/d2a4u/sqs4s/sqs4s-native/images/download.svg" alt="Download"></a></p>
+<p>Streaming client for AWS SQS using <a href="https://github.com/functional-streams-for-scala/fs2">fs2</a>.</p>
+<p>The library does not have dependency on Java AWS SDK, it provides features to consume
+and produce messages by leveraging AWS SQS's HTTP API. Hence, internally, consuming
+and producing to SQS are just pure HTTP calls. Authentication implements
+the <a href="https://docs.aws.amazon.com/general/latest/gr/sigv4_signing.html">AWS Signature V4</a>.</p>
+<h2><a class="anchor" aria-hidden="true" id="install"></a><a href="#install" aria-hidden="true" class="hash-link"><svg class="hash-link-icon" aria-hidden="true" height="16" version="1.1" viewBox="0 0 16 16" width="16"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Install</h2>
+<p>See the badge at the top of the README for the exact version number.</p>
+<p>Add the following to your <code>build.sbt</code>:</p>
+<pre><code class="hljs css language-scala">resolvers += <span class="hljs-type">Resolver</span>.bintrayRepo(<span class="hljs-string">"d2a4u"</span>, <span class="hljs-string">"sqs4s"</span>)
+
+<span class="hljs-comment">// available for Scala 2.12</span>
+libraryDependencies += <span class="hljs-string">"io.sqs4s"</span> %% <span class="hljs-string">"sqs4s-native"</span> % <span class="hljs-string">"LATEST_VERSION"</span>
+</code></pre>
+<h2><a class="anchor" aria-hidden="true" id="usage"></a><a href="#usage" aria-hidden="true" class="hash-link"><svg class="hash-link-icon" aria-hidden="true" height="16" version="1.1" viewBox="0 0 16 16" width="16"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Usage</h2>
+<p><em>Limitation:</em> SQS HTTP API limits maximum message size of 256 KB and the message
+body needs to be provided as URL's query parameter, hence:</p>
+<ul>
+<li>we cannot make use of streaming message as request's body</li>
+<li>the message should only has characters that are safe for URL encoding</li>
+<li>you should always use HTTPS</li>
+</ul>
+<p>However, it is good practice to keep message's size small since it should only
+contains references rather than data.</p>
+<h3><a class="anchor" aria-hidden="true" id="serializing-messages"></a><a href="#serializing-messages" aria-hidden="true" class="hash-link"><svg class="hash-link-icon" aria-hidden="true" height="16" version="1.1" viewBox="0 0 16 16" width="16"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Serializing Messages</h3>
+<p>Because of the limitation stated above, serialize is actual quite simple:</p>
+<pre><code class="hljs css language-scala"><span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">serialize</span></span>(t: <span class="hljs-type">T</span>): <span class="hljs-type">String</span>
+</code></pre>
+<p>Just need to make sure that the serialized String only contains URL encoding
+characters.</p>
+<p>Deserialize is:</p>
+<pre><code class="hljs css language-scala"><span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">deserialize</span></span>(s: <span class="hljs-type">String</span>): <span class="hljs-type">F</span>[<span class="hljs-type">T</span>]
+</code></pre>
+<p>Where <code>F</code> is <code>F[_]: MonadError[?[_], Throwable]</code> to encapsulate error.</p>
+<h3><a class="anchor" aria-hidden="true" id="apis"></a><a href="#apis" aria-hidden="true" class="hash-link"><svg class="hash-link-icon" aria-hidden="true" height="16" version="1.1" viewBox="0 0 16 16" width="16"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>APIs</h3>
+<h4><a class="anchor" aria-hidden="true" id="low-level"></a><a href="#low-level" aria-hidden="true" class="hash-link"><svg class="hash-link-icon" aria-hidden="true" height="16" version="1.1" viewBox="0 0 16 16" width="16"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Low Level</h4>
+<p>1-2-1 implementation of <a href="https://docs.aws.amazon.com/AWSSimpleQueueService/latest/APIReference/API_Operations.html">SQS' API</a></p>
+<ul>
+<li>CreateQueue</li>
+<li>DeleteMessage</li>
+<li>DeleteMessageBatch</li>
+<li>ReceiveMessage</li>
+<li>SendMessage</li>
+<li>SendMessageBatch</li>
+</ul>
+<h4><a class="anchor" aria-hidden="true" id="high-level"></a><a href="#high-level" aria-hidden="true" class="hash-link"><svg class="hash-link-icon" aria-hidden="true" height="16" version="1.1" viewBox="0 0 16 16" width="16"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>High Level</h4>
+<ul>
+<li><code>produce</code>: produce a message to SQS</li>
+<li><code>batchProduce</code>: produce messages to SQS in batch operation</li>
+<li><code>consume</code>: consume messages from SQS as a fs2 Stream, only acknowledge the message only when it has been processed</li>
+<li><code>consumeAsync</code>: consume messages but making multiple calls to SQS in parallel</li>
+<li><code>dequeue</code>: get messages from SQS as a fs2 Stream but acknowledge right away</li>
+<li><code>dequeueAsync</code>: get messages but making multiple calls to SQS in parallel</li>
+<li><code>peek</code>: peek for X number of messages in SQS without acknowledging them</li>
+</ul>
+<h2><a class="anchor" aria-hidden="true" id="examples"></a><a href="#examples" aria-hidden="true" class="hash-link"><svg class="hash-link-icon" aria-hidden="true" height="16" version="1.1" viewBox="0 0 16 16" width="16"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Examples</h2>
+<h3><a class="anchor" aria-hidden="true" id="create-queue"></a><a href="#create-queue" aria-hidden="true" class="hash-link"><svg class="hash-link-icon" aria-hidden="true" height="16" version="1.1" viewBox="0 0 16 16" width="16"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Create Queue</h3>
+<pre><code class="hljs css language-scala"><span class="hljs-keyword">val</span> created = <span class="hljs-type">BlazeClientBuilder</span>[<span class="hljs-type">IO</span>](ec).resource
+  .use { <span class="hljs-keyword">implicit</span> client =&gt;
+    <span class="hljs-type">CreateQueue</span>[<span class="hljs-type">IO</span>](<span class="hljs-string">"test"</span>, sqsEndpoint).runWith(setting)
+  }
+  .unsafeRunSync()
+</code></pre>
+<h3><a class="anchor" aria-hidden="true" id="produce-and-consume"></a><a href="#produce-and-consume" aria-hidden="true" class="hash-link"><svg class="hash-link-icon" aria-hidden="true" height="16" version="1.1" viewBox="0 0 16 16" width="16"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Produce and Consume</h3>
+<pre><code class="hljs css language-scala"><span class="hljs-type">BlazeClientBuilder</span>[<span class="hljs-type">IO</span>](ec)
+  .withMaxTotalConnections(<span class="hljs-number">128</span>)
+  .withMaxWaitQueueLimit(<span class="hljs-number">2048</span>)
+  .withMaxConnectionsPerRequestKey(<span class="hljs-type">Function</span>.const(<span class="hljs-number">2048</span>))
+  .resource
+  .use { <span class="hljs-keyword">implicit</span> client =&gt;
+    <span class="hljs-keyword">val</span> producer = <span class="hljs-type">SqsProducer</span>.instance[<span class="hljs-type">IO</span>, <span class="hljs-type">String</span>](settings)
+    <span class="hljs-keyword">val</span> consumer = <span class="hljs-type">SqsConsumer</span>.instance[<span class="hljs-type">IO</span>, <span class="hljs-type">String</span>](settings)
+    <span class="hljs-comment">// mapAsync number should match connection pool connections</span>
+    <span class="hljs-type">Stream</span>.emits[<span class="hljs-type">IO</span>, <span class="hljs-type">String</span>](<span class="hljs-type">List</span>.fill(<span class="hljs-number">10</span>)(<span class="hljs-string">"Test"</span>))
+      .mapAsync(<span class="hljs-number">128</span>)(producer.produce)
+      .compile
+      .drain
+      .flatMap(_ =&gt; consumer.dequeueAsync(<span class="hljs-number">128</span>).take(<span class="hljs-number">10</span>).compile.drain)
+  }.unsafeRunSync()
+</code></pre>
+<h2><a class="anchor" aria-hidden="true" id="license"></a><a href="#license" aria-hidden="true" class="hash-link"><svg class="hash-link-icon" aria-hidden="true" height="16" version="1.1" viewBox="0 0 16 16" width="16"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>License</h2>
+<p>This project is licensed under the <a href="https://opensource.org/licenses/MIT">MIT License</a></p>
+</span></div></article></div><div class="docs-prevnext"></div></div></div><nav class="onPageNav"><ul class="toc-headings"><li><a href="#install">Install</a></li><li><a href="#usage">Usage</a><ul class="toc-headings"><li><a href="#serializing-messages">Serializing Messages</a></li><li><a href="#apis">APIs</a></li></ul></li><li><a href="#examples">Examples</a><ul class="toc-headings"><li><a href="#create-queue">Create Queue</a></li><li><a href="#produce-and-consume">Produce and Consume</a></li></ul></li><li><a href="#license">License</a></li></ul></nav></div><footer class="nav-footer" id="footer"></footer></div></body></html>
