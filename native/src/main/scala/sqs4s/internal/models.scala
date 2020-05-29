@@ -14,22 +14,24 @@ import org.http4s.util.CaseInsensitiveString
 import org.http4s.{Headers, Method, Query, Request, Uri}
 import sqs4s.internal.aws4.common._
 
+import scala.collection.compat._
 import scala.language.postfixOps
 
 private[sqs4s] object models {
   implicit def unsafeLogger[F[_]: Sync] = Slf4jLogger.getLogger[F]
 
   final case class CQuery(query: Query) {
-    private def urlEncode[F[_]: Sync](str: String): F[String] = Sync[F].delay {
-      URLEncoder
-        .encode(str, StandardCharsets.UTF_8.name())
-        .replaceAll("\\+", "%20")
-        .replaceAll("\\%21", "!")
-        .replaceAll("\\%27", "'")
-        .replaceAll("\\%28", "(")
-        .replaceAll("\\%29", ")")
-        .replaceAll("\\%7E", "~")
-    }
+    private def urlEncode[F[_]: Sync](str: String): F[String] =
+      Sync[F].delay {
+        URLEncoder
+          .encode(str, StandardCharsets.UTF_8.name())
+          .replaceAll("\\+", "%20")
+          .replaceAll("\\%21", "!")
+          .replaceAll("\\%27", "'")
+          .replaceAll("\\%28", "(")
+          .replaceAll("\\%29", ")")
+          .replaceAll("\\%7E", "~")
+      }
 
     def value[F[_]: Sync]: F[String] =
       query.toList.sorted
@@ -67,12 +69,12 @@ private[sqs4s] object models {
         }
 
       val duplicationGuarded: List[(String, String)] => Map[String, String] =
-        _.groupBy { case (key, _) => key }.mapValues(_.map {
+        _.groupBy { case (key, _) => key }.view.mapValues(_.map {
           case (_, value) => value
-        }.mkString(","))
+        }.mkString(",")).toMap
 
       val multiLineGuarded: Map[String, String] => Map[String, String] =
-        _.mapValues(_.replaceAll("\n +", ",").trim)
+        _.view.mapValues(_.replaceAll("\n +", ",").trim).toMap
 
       removeDateHeader
         .andThen(pruneHeaders)
@@ -151,14 +153,8 @@ private[sqs4s] object models {
           LocalDateTime.ofInstant(now, ZoneOffset.UTC)
         }
         sig <- sign(secretKey, region, service, ts)
-        tk <- token(
-          sig,
-          signedHeaders,
-          ts.toLocalDate,
-          accessKey,
-          region,
-          service
-        )
+        tk <-
+          token(sig, signedHeaders, ts.toLocalDate, accessKey, region, service)
       } yield request.putHeaders(Authorization(tk))
 
     private def token(
@@ -177,8 +173,8 @@ private[sqs4s] object models {
           "SignedHeaders" -> signedHeaders,
           "Signature" -> signature
         ).map {
-            case (k, v) => s"$k=$v"
-          }
+          case (k, v) => s"$k=$v"
+        }
           .mkString(", ")
         Token(CaseInsensitiveString(AwsAlgo), tk)
       }

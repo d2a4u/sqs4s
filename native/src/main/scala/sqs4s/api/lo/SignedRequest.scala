@@ -18,26 +18,29 @@ case class SignedRequest[F[_]: Sync: Clock](
   def render: F[Request[F]] = {
     for {
       millis <- Clock[F].realTime(TimeUnit.MILLISECONDS)
-      uriWithQueries <- params
-        .foldLeft(url) {
-          case (u, (key, value)) =>
-            u.withQueryParam(key, value)
-        }
-        .pure[F]
-      req <- request
-        .withUri(uriWithQueries)
-        .withHostHeader(uriWithQueries)
-        .withExpiresHeaderF[F]()
-        .flatMap(_.withXAmzDateHeaderF[F](millis))
+      uriWithQueries <-
+        params
+          .foldLeft(url) {
+            case (u, (key, value)) =>
+              u.withQueryParam(key, value)
+          }
+          .pure[F]
+      req <-
+        request
+          .withUri(uriWithQueries)
+          .withHostHeader(uriWithQueries)
+          .withExpiresHeaderF[F]()
+          .flatMap(_.withXAmzDateHeaderF[F](millis))
       creq = CReq[F](req)
-      authed <- creq
-        .toAuthorizedRequest(
-          auth.accessKey,
-          auth.secretKey,
-          auth.region,
-          "sqs",
-          millis
-        )
+      authed <-
+        creq
+          .toAuthorizedRequest(
+            auth.accessKey,
+            auth.secretKey,
+            auth.region,
+            "sqs",
+            millis
+          )
     } yield authed
   }
 }

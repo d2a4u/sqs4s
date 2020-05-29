@@ -36,7 +36,7 @@ class ReceiveMessageSpec extends IOSpec {
         .unsafeRunSync()
     val params = request.uri.query.params
     params("Action") shouldEqual "ReceiveMessage"
-    params.get("Version").nonEmpty shouldEqual true
+    params.contains("Version") shouldEqual true
     params("MaxNumberOfMessages").toInt shouldEqual 5
     params("VisibilityTimeout").toInt shouldEqual 10
     params("WaitTimeSeconds").toInt shouldEqual 10

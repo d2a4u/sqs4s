@@ -1,9 +1,9 @@
 import sbt.Keys.organization
 import sbt.addCompilerPlugin
 
-val circeVersion = "0.11.2"
-val fs2Version = "1.0.5"
-val http4sVersion = "0.20.23"
+val circeVersion = "0.13.0"
+val fs2Version = "2.3.0"
+val http4sVersion = "0.21.4"
 val logbackVersion = "1.2.3"
 
 val circe = Seq(
@@ -18,7 +18,8 @@ lazy val dependencies = Seq(
   "org.scala-lang.modules" %% "scala-parser-combinators" % "1.1.2",
   "io.chrisdavenport" %% "log4cats-slf4j" % "1.1.1",
   "co.fs2" %% "fs2-core" % fs2Version,
-  "javax.xml.bind" % "jaxb-api" % "2.4.0-b180830.0359"
+  "javax.xml.bind" % "jaxb-api" % "2.4.0-b180830.0359",
+  "org.scala-lang.modules" %% "scala-collection-compat" % "2.1.6"
 )
 
 lazy val testDependencies = Seq(
@@ -30,8 +31,8 @@ lazy val testDependencies = Seq(
 
 lazy val commonSettings = Seq(
   organization in ThisBuild := "io.sqs4s",
-  scalaVersion := "2.12.11",
-  crossScalaVersions := Seq("2.12.11"),
+  scalaVersion := "2.13.2",
+  crossScalaVersions := Seq("2.12.11", "2.13.2"),
   parallelExecution in Test := false,
   scalafmtOnCompile := true,
   licenses += ("MIT", url("http://opensource.org/licenses/MIT")),
@@ -42,7 +43,7 @@ lazy val commonSettings = Seq(
   releaseCrossBuild := true,
   bintrayReleaseOnPublish := false,
   addCompilerPlugin(
-    ("org.typelevel" %% "kind-projector" % "0.10.3").cross(CrossVersion.binary)
+    "org.typelevel" % "kind-projector" % "0.11.0" cross CrossVersion.full
   )
 )
 
@@ -62,11 +63,17 @@ lazy val native = project
     commonSettings
   )
 
+lazy val noPublish =
+  Seq(publish := {}, publishLocal := {}, publishArtifact := false)
+
 lazy val root = project
   .in(file("."))
   .enablePlugins(JmhPlugin)
-  .settings(name := "sqs4s", noPublish, commonSettings)
+  .settings(name := "sqs4s", commonSettings, noPublish)
   .aggregate(native)
 
-lazy val noPublish =
-  Seq(publish := {}, publishLocal := {}, publishArtifact := false)
+lazy val docs = project
+  .in(file("sqs4s-docs"))
+  .settings(moduleName := "sqs4s-docs", commonSettings, noPublish)
+  .dependsOn(native)
+  .enablePlugins(MdocPlugin, DocusaurusPlugin)

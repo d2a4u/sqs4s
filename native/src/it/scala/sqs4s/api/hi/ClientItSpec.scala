@@ -22,9 +22,10 @@ import scala.concurrent.duration._
 
 class ClientItSpec extends IOSpec {
   override implicit lazy val testClock: Clock[IO] = new Clock[IO] {
-    def realTime(unit: TimeUnit): IO[Long] = IO.delay {
-      Instant.now().toEpochMilli
-    }
+    def realTime(unit: TimeUnit): IO[Long] =
+      IO.delay {
+        Instant.now().toEpochMilli
+      }
 
     def monotonic(unit: TimeUnit): IO[Long] = IO(0L)
   }
@@ -128,41 +129,40 @@ class ClientItSpec extends IOSpec {
       client <- clientResrc
     } yield (r, interrupter, client)
 
-    val outputF = resources.use {
-      case (ref, interrupter, client) =>
-        implicit val c = client
-        val producer = SqsProducer.instance[IO, TestMessage](settings)
-        val consumer = SqsConsumer.instance[IO, TestMessage](consumerSettings)
-        producer
-          .batchProduce(inputStream, _.int.toString.pure[IO])
-          .compile
-          .drain
-          .flatMap { _ =>
-            consumer
-              .consumeAsync(256)(msg => {
-                def loop(): IO[Unit] = {
-                  ref.access.flatMap {
-                    case (list, setter) =>
-                      val set = setter(list :+ msg).flatMap { updated =>
-                        if (updated) {
-                          ().pure[IO]
-                        } else {
-                          loop()
-                        }
-                      }
-                      if (list.size == numOfMsgs - 1)
-                        set >> interrupter.set(true)
-                      else set
-                  }
-                }
-
-                loop()
-              })
-              .interruptWhen(interrupter)
-              .compile
-              .drain
-          } >> ref.get
-    }
+//    val outputF = resources.use {
+//      case (ref, interrupter, client) =>
+//        implicit val c = client
+//        val producer = SqsProducer.instance[IO, TestMessage](settings)
+//        val consumer = SqsConsumer.instance[IO, TestMessage](consumerSettings)
+//        producer
+//          .batchProduce(inputStream, _.int.toString.pure[IO])
+//          .compile
+//          .drain
+//          .flatMap { _ =>
+//            consumer
+//              .consumeAsync(256)(msg => {
+//                def loop(): IO[Unit] = {
+//                  ref.access.flatMap {
+//                    case (list, setter) =>
+//                      val set = setter(list :+ msg).flatMap { updated =>
+//                        if (updated) {
+//                          ().pure[IO]
+//                        } else {
+//                          loop()
+//                        }
+//                      }
+//                      if (list.size == numOfMsgs - 1)
+//                        set >> interrupter.set(true)
+//                      else set
+//                  }
+//                }
+//                loop()
+//              })
+//              .interruptWhen(interrupter)
+//              .compile
+//              .drain
+//          } >> ref.get
+//    }
 
     outputF
       .unsafeRunSync() should contain theSameElementsAs input

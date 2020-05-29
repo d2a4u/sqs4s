@@ -87,8 +87,10 @@ case class SendMessageBatch[F[_]: Sync: Clock, T](
   }
 
   def parseResponse(response: Elem): F[SendMessageBatch.Result] = {
-    if ((response \\ "BatchResultErrorEntry").isEmpty &&
-      (response \\ "SendMessageBatchResultEntry").isEmpty) {
+    if (
+      (response \\ "BatchResultErrorEntry").isEmpty &&
+      (response \\ "SendMessageBatchResultEntry").isEmpty
+    ) {
       Sync[F].raiseError(
         UnexpectedResponseError(
           "BatchResultErrorEntry, SendMessageBatchResultEntry",
@@ -114,23 +116,27 @@ object SendMessageBatch {
     attributes: Map[String, String] = Map.empty,
     delay: Option[Duration] = None,
     dedupId: Option[String] = None,
-    groupId: Option[String] = None)
+    groupId: Option[String] = None
+  )
 
   case class Result(
     requestId: String,
     successes: List[Success],
-    errors: List[Error])
+    errors: List[Error]
+  )
 
   case class Success(
     id: String,
     messageBodyMd5: String,
     messageAttributesMd5: Option[String],
     messageId: String,
-    sequenceNumber: Option[BigInt])
+    sequenceNumber: Option[BigInt]
+  )
 
   case class Error(
     id: String,
     code: String,
     message: Option[String],
-    senderFault: Boolean)
+    senderFault: Boolean
+  )
 }

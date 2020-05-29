@@ -37,7 +37,7 @@ class DeleteMessageBatchItSpec extends IOSpec {
       }
       .attempt
       .unsafeRunSync()
-      .left
-      .get shouldBe a[AwsSqsError]
+      .swap
+      .getOrElse(throw new Exception("Testing failure")) shouldBe a[AwsSqsError]
   }
 }

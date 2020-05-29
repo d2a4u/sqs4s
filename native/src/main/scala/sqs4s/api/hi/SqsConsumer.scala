@@ -39,28 +39,30 @@ trait SqsConsumer[F[_], T] {
 }
 
 object SqsConsumer {
-  def instance[F[_]: Concurrent: Parallel: Clock: Timer: Client, T: SqsDeserializer[
-    F,
-    *
-  ]](consumerSettings: ConsumerSettings): SqsConsumer[F, T] =
+  def instance[F[
+    _
+  ]: Concurrent: Parallel: Clock: Timer: Client, T: SqsDeserializer[F, *]](
+    consumerSettings: ConsumerSettings
+  ): SqsConsumer[F, T] =
     new SqsConsumer[F, T] {
       private val settings =
         SqsSettings(consumerSettings.queue, consumerSettings.auth)
 
       override def consume(process: T => F[Unit]): F[Unit] = {
-        def ack: Pipe[F, Chunk[ReceiveMessage.Result[T]], Unit] = input => {
-          val toAck = input.evalMap { chunk =>
-            chunk
-              .parTraverse { entry =>
-                process(entry.body).as(DeleteMessage[F](entry.receiptHandle))
+        def ack: Pipe[F, Chunk[ReceiveMessage.Result[T]], Unit] =
+          input => {
+            val toAck = input.evalMap { chunk =>
+              chunk
+                .parTraverse { entry =>
+                  process(entry.body).as(DeleteMessage[F](entry.receiptHandle))
+                }
+            }
+            toAck.flatMap { chunk =>
+              Stream.chunk[F, DeleteMessage[F]](chunk).flatMap { del =>
+                retry(del.runWith(settings).void)
               }
-          }
-          toAck.flatMap { chunk =>
-            Stream.chunk[F, DeleteMessage[F]](chunk).flatMap { del =>
-              retry(del.runWith(settings).void)
             }
           }
-        }
 
         Stream
           .repeatEval(read)
@@ -189,7 +191,8 @@ object SqsConsumer {
             f,
             consumerSettings.initialDelay,
             _ * 2,
-            consumerSettings.maxRetry, {
+            consumerSettings.maxRetry,
+            {
               case _: TimeoutException => true
               case _: RetriableServerError => true
             }

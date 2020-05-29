@@ -3,6 +3,7 @@ package sqs4s.api.lo
 import cats.MonadError
 import cats.implicits._
 import cats.effect.Sync
+import fs2.Chunk
 import org.http4s.client.Client
 import org.http4s.{Request, Response, Status}
 import sqs4s.api.SqsSettings
@@ -24,14 +25,14 @@ abstract class Action[F[_]: Sync, T] {
 
   val handleError: Response[F] => F[Throwable] = error => {
     if (error.status.responseClass == Status.ServerError) {
-      error.body.compile.toChunk
+      error.body.compile.to(Chunk)
         .map(b => RetriableServerError(new String(b.toArray)))
     } else {
       if (error.status == Status.UriTooLong) {
         MonadError[F, Throwable].raiseError(MessageTooLarge)
       } else {
         for {
-          bytes <- error.body.compile.toChunk
+          bytes <- error.body.compile.to(Chunk)
           xml <- Sync[F].delay(XML.loadString(new String(bytes.toArray)))
         } yield handleXmlError(xml)
       }

@@ -29,7 +29,10 @@ case class DeleteMessageBatch[F[_]: Sync: Clock](
 
   def mkRequest(settings: SqsSettings): F[Request[F]] = {
     val params =
-      List("Action" -> "DeleteMessageBatch", "Version" -> "2012-11-05") ++ receiptHandles
+      List(
+        "Action" -> "DeleteMessageBatch",
+        "Version" -> "2012-11-05"
+      ) ++ receiptHandles
 
     SignedRequest.post(params, settings.queue, settings.auth).render
   }
@@ -54,8 +57,10 @@ case class DeleteMessageBatch[F[_]: Sync: Clock](
     }
 
   def parseResponse(response: Elem): F[DeleteMessageBatch.Result] = {
-    if ((response \\ "BatchResultErrorEntry").isEmpty &&
-      (response \\ "DeleteMessageBatchResultEntry").isEmpty) {
+    if (
+      (response \\ "BatchResultErrorEntry").isEmpty &&
+      (response \\ "DeleteMessageBatchResultEntry").isEmpty
+    ) {
       Sync[F].raiseError(
         UnexpectedResponseError(
           "BatchResultErrorEntry, DeleteMessageBatchResultEntry",
