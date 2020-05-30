@@ -19,7 +19,7 @@ const repoUrl = "https://github.com/d2a4u/sqs4s";
 
 const siteConfig = {
   title: 'sqs4s', // Title for your website.
-  tagline: 'Pure Scala client for AWS SQS',
+  tagline: 'Pure Scala functional streaming client for AWS SQS with fs2',
   url: 'https://d2a4u.github.io',
   baseUrl: '/sqs4s/', // Base URL for your project */
   customDocsPath: "sqs4s-docs/target/mdoc",
