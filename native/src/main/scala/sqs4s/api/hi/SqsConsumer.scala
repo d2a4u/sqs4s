@@ -18,19 +18,16 @@ trait SqsConsumer[F[_], T] {
   def consume(process: T => F[Unit]): F[Unit]
 
   // not suitable for FIFO queue
-  def consumeAsync(
-    maxConcurrent: Int,
-    groupWithin: FiniteDuration = 1.second,
-    batch: Int = 256
-  )(process: T => F[Unit]): Stream[F, Unit]
+  def consumeAsync(maxConcurrent: Int, groupWithin: FiniteDuration = 1.second)(
+    process: T => F[Unit]
+  ): Stream[F, Unit]
 
   def dequeue(): Stream[F, T]
 
   // not suitable for FIFO queue
   def dequeueAsync(
     maxConcurrent: Int,
-    groupWithin: FiniteDuration = 1.second,
-    batch: Int = 256
+    groupWithin: FiniteDuration = 1.second
   ): Stream[F, T]
 
   def peek(number: Int): Stream[F, T]
@@ -75,8 +72,7 @@ object SqsConsumer {
 
       override def consumeAsync(
         maxConcurrent: Int,
-        groupWithin: FiniteDuration = 1.second,
-        batch: Int = 256
+        groupWithin: FiniteDuration = 1.second
       )(process: T => F[Unit]): Stream[F, Unit] = {
         import DeleteMessageBatch._
 
@@ -109,8 +105,7 @@ object SqsConsumer {
               consumerSettings.maxRead,
               consumerSettings.visibilityTimeout,
               consumerSettings.waitTimeSeconds
-            ),
-            batch
+            )
           )
           .metered(consumerSettings.pollingRate)
           .mapAsync(maxConcurrent)(_.runWith(settings))
@@ -137,8 +132,7 @@ object SqsConsumer {
 
       override def dequeueAsync(
         maxConcurrent: Int,
-        groupWithin: FiniteDuration = 1.second,
-        batch: Int = 256
+        groupWithin: FiniteDuration = 1.second
       ): Stream[F, T] = {
         val delete: Pipe[F, Chunk[ReceiveMessage.Result[T]], Chunk[T]] =
           _.mapAsync(maxConcurrent) { chunk =>
@@ -160,8 +154,7 @@ object SqsConsumer {
               consumerSettings.maxRead,
               consumerSettings.visibilityTimeout,
               consumerSettings.waitTimeSeconds
-            ),
-            batch
+            )
           )
           .metered(consumerSettings.pollingRate)
           .mapAsync(maxConcurrent)(_.runWith(settings))

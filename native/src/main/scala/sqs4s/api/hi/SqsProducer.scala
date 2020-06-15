@@ -1,7 +1,7 @@
 package sqs4s.api.hi
 
 import cats.MonadError
-import cats.effect.{Clock, Concurrent, Timer}
+import cats.effect.{Clock, Concurrent, Resource, Timer}
 import cats.implicits._
 import fs2.Stream
 import org.http4s.client.Client
@@ -10,6 +10,7 @@ import sqs4s.api.errors.MessageTooLarge
 import sqs4s.api.lo.{SendMessage, SendMessageBatch}
 import sqs4s.serialization.SqsSerializer
 
+import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
 
 trait SqsProducer[F[_], T] {
