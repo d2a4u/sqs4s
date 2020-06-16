@@ -1,0 +1,7 @@
+coverage:
+  status:
+    project:
+      default: false
+      native:
+        paths:
+          - native/*

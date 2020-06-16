@@ -19,7 +19,7 @@ const repoUrl = "https://github.com/d2a4u/sqs4s";
 
 const siteConfig = {
   title: 'sqs4s', // Title for your website.
-  tagline: 'Pure Scala functional streaming client for AWS SQS with fs2',
+  tagline: 'Pure Scala client for AWS SQS with fs2, not a Java wrapper',
   url: 'https://d2a4u.github.io',
   baseUrl: '/sqs4s/', // Base URL for your project */
   customDocsPath: "sqs4s-docs/target/mdoc",
@@ -32,7 +32,7 @@ const siteConfig = {
 
   // For no header links in the top nav bar -> headerLinks: [],
   headerLinks: [
-    {doc: 'documentation', label: 'Documentation'},
+    {doc: 'overview', label: 'Documentation'},
     {href: repoUrl, label: 'Github'},
   ],
 

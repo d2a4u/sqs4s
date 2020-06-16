@@ -1,7 +1,7 @@
 ---
-id: documentation
-title: Documentation
-sidebar_label: Documentation
+id: overview
+title: Overview
+sidebar_label: Overview
 ---
 
 ## Usage
@@ -57,35 +57,3 @@ Where `F` is `F[_]: MonadError[?[_], Throwable]` to encapsulate error.
 - `dequeueAsync` get messages but making multiple calls to SQS in parallel
 - `peek` peek for X number of messages in SQS without acknowledging them
 
-## Examples
-
-### Create Queue
-
-```scala
-val created = BlazeClientBuilder[IO](ec).resource
-  .use { implicit client =>
-    CreateQueue[IO]("test", sqsEndpoint).runWith(setting)
-  }
-  .unsafeRunSync()
-```
-
-### Produce and Consume
-
-```scala
-BlazeClientBuilder[IO](ec)
-  .withMaxTotalConnections(128)
-  .withMaxWaitQueueLimit(2048)
-  .withMaxConnectionsPerRequestKey(Function.const(2048))
-  .resource
-  .use { implicit client =>
-    val producer = SqsProducer.instance[IO, String](settings)
-    val consumer = SqsConsumer.instance[IO, String](consumerSettings)
-    // mapAsync number should match connection pool connections
-    Stream.emits[IO, String](List.fill(10)("Test"))
-      .mapAsync(128)(producer.produce)
-      .compile
-      .drain >> consumer.dequeueAsync(128).take(10).compile.drain
-  }.unsafeRunSync()
-```
-
-More examples can be found in [ClientItSpec.scala](https://github.com/d2a4u/sqs4s/blob/master/native/src/it/scala/sqs4s/api/hi/ClientItSpec.scala)
