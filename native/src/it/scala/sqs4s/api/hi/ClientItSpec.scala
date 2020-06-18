@@ -186,10 +186,7 @@ class ClientItSpec extends IOSpec {
         inputStream
           .mapAsync(256)(msg => producer.produce(msg))
           .compile
-          .drain
-          .flatMap(
-            _ => consumer.dequeueAsync(256).take(numOfMsgs).compile.toList
-          )
+          .drain >> consumer.dequeueAsync(256).take(numOfMsgs).compile.toList
       }
     outputF.unsafeRunSync() should contain theSameElementsAs input
   }

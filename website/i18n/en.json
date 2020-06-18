@@ -3,7 +3,7 @@
   "localized-strings": {
     "next": "Next",
     "previous": "Previous",
-    "tagline": "Pure Scala client for AWS SQS",
+    "tagline": "Pure Scala functional streaming client for AWS SQS with fs2",
     "docs": {
       "doc1": {
         "title": "Latin-ish",
@@ -15,15 +15,19 @@
       "doc3": {
         "title": "This is document number 3"
       },
-      "documentation": {
-        "title": "Documentation",
-        "sidebar_label": "Documentation"
+      "overview": {
+        "title": "Overview",
+        "sidebar_label": "Overview"
       },
       "doc4": {
         "title": "Other Document"
       },
       "doc5": {
         "title": "Fifth Document"
+      },
+      "examples": {
+        "title": "Examples",
+        "sidebar_label": "Examples"
       },
       "home": {
         "title": "sqs4s",
@@ -38,9 +42,7 @@
       "Github": "Github"
     },
     "categories": {
-      "Docusaurus": "Docusaurus",
-      "First Category": "First Category",
-      "Second Category": "Second Category"
+      "Documentation": "Documentation"
     }
   },
   "pages-strings": {

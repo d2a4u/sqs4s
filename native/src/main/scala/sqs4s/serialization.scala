@@ -9,12 +9,28 @@ object serialization {
     def deserialize(s: String): F[T]
   }
 
+  object SqsDeserializer {
+    def apply[F[_]: MonadError[*[_], Throwable], T](
+      implicit ev: SqsDeserializer[F, T]
+    ): SqsDeserializer[F, T] = ev
+
+    def instance[F[_]: MonadError[*[_], Throwable], T](
+      f: String => F[T]
+    ): SqsDeserializer[F, T] =
+      new SqsDeserializer[F, T] {
+        override def deserialize(s: String): F[T] = f(s)
+      }
+  }
+
   abstract class SqsSerializer[T] {
     def serialize(t: T): String
   }
 
   object SqsSerializer {
     def apply[T](implicit ev: SqsSerializer[T]): SqsSerializer[T] = ev
+
+    def instance[T](f: T => String): SqsSerializer[T] =
+      (t: T) => f(t)
   }
 
   object instances {

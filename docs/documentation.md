@@ -1,7 +1,7 @@
 ---
-id: documentation
-title: Documentation
-sidebar_label: Documentation
+id: overview
+title: Overview
+sidebar_label: Overview
 ---
 
 ## Usage
@@ -49,42 +49,11 @@ Where `F` is `F[_]: MonadError[?[_], Throwable]` to encapsulate error.
 
 #### High Level
 
-- `produce`: produce a message to SQS
-- `batchProduce`: produce messages to SQS in batch operation
-- `consume`: consume messages from SQS as a fs2 Stream, only acknowledge the message only when it has been processed
-- `consumeAsync`: consume messages but making multiple calls to SQS in parallel
-- `dequeue`: get messages from SQS as a fs2 Stream but acknowledge right away
-- `dequeueAsync`: get messages but making multiple calls to SQS in parallel
-- `peek`: peek for X number of messages in SQS without acknowledging them
+- `produce` produce a message to SQS
+- `batchProduce` produce messages to SQS in batch operation
+- `consume` consume messages from SQS as a fs2 Stream, only acknowledge the message only when it has been processed
+- `consumeAsync` consume messages but making multiple calls to SQS in parallel
+- `dequeue` get messages from SQS as a fs2 Stream but acknowledge right away
+- `dequeueAsync` get messages but making multiple calls to SQS in parallel
+- `peek` peek for X number of messages in SQS without acknowledging them
 
-## Examples
-
-### Create Queue
-
-```scala
-val created = BlazeClientBuilder[IO](ec).resource
-  .use { implicit client =>
-    CreateQueue[IO]("test", sqsEndpoint).runWith(setting)
-  }
-  .unsafeRunSync()
-```
-
-### Produce and Consume
-
-```scala
-BlazeClientBuilder[IO](ec)
-  .withMaxTotalConnections(128)
-  .withMaxWaitQueueLimit(2048)
-  .withMaxConnectionsPerRequestKey(Function.const(2048))
-  .resource
-  .use { implicit client =>
-    val producer = SqsProducer.instance[IO, String](settings)
-    val consumer = SqsConsumer.instance[IO, String](settings)
-    // mapAsync number should match connection pool connections
-    Stream.emits[IO, String](List.fill(10)("Test"))
-      .mapAsync(128)(producer.produce)
-      .compile
-      .drain
-      .flatMap(_ => consumer.dequeueAsync(128).take(10).compile.drain)
-  }.unsafeRunSync()
-```

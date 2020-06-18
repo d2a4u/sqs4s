@@ -50,7 +50,7 @@ class HomeSplash extends React.Component {
         <div className="inner">
           <ProjectTitle tagline={siteConfig.tagline} title={siteConfig.title} />
           <PromoSection>
-            <Button href={docUrl('documentation.html')}>Documentation</Button>
+            <Button href={docUrl('overview.html')}>Documentation</Button>
             <Button href={siteConfig.repoUrl}>Github</Button>
           </PromoSection>
         </div>
@@ -88,7 +88,6 @@ class Index extends React.Component {
         [![Codacy Badge](https://api.codacy.com/project/badge/Grade/8a331de033cb4700acddb175af4148bb)](https://www.codacy.com/app/d2a4u/sqs4s?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=d2a4u/sqs4s&amp;utm_campaign=Badge_Grade)
         [![Download](https://api.bintray.com/packages/d2a4u/sqs4s/sqs4s-native/images/download.svg)](https://bintray.com/d2a4u/sqs4s/sqs4s-native/_latestVersion)
 
-        Functional streaming client for AWS SQS with [fs2](https://github.com/functional-streams-for-scala/fs2)
         </MarkdownBlock>
       </div>
     );
