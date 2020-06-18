@@ -3,7 +3,7 @@
   "localized-strings": {
     "next": "Next",
     "previous": "Previous",
-    "tagline": "Pure Scala functional streaming client for AWS SQS with fs2",
+    "tagline": "Pure Scala client for AWS SQS with fs2, not a Java wrapper",
     "docs": {
       "doc1": {
         "title": "Latin-ish",
