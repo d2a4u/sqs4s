@@ -8,8 +8,8 @@ sidebar_label: Examples
 
 ```scala
 val created = BlazeClientBuilder[IO](ec).resource
-  .use { implicit client =>
-    CreateQueue[IO]("test", sqsEndpoint).runWith(setting)
+  .use { client =>
+    CreateQueue[IO]("test", sqsEndpoint).runWith(client, setting)
   }
   .unsafeRunSync()
 ```
@@ -22,9 +22,9 @@ BlazeClientBuilder[IO](ec)
   .withMaxWaitQueueLimit(2048)
   .withMaxConnectionsPerRequestKey(Function.const(2048))
   .resource
-  .use { implicit client =>
-    val producer = SqsProducer.instance[IO, String](settings)
-    val consumer = SqsConsumer.instance[IO, String](consumerSettings)
+  .use { client =>
+    val producer = SqsProducer[String](client, settings)
+    val consumer = SqsConsumer[String](client, consumerSettings)
     // mapAsync number should match connection pool connections
     Stream.emits[IO, String](List.fill(10)("Test"))
       .mapAsync(128)(producer.produce)
@@ -68,9 +68,7 @@ object Main extends IOApp {
     val accessKey = sys.env("ACCESS_KEY")
     val secretKey = sys.env("SECRET_KEY")
     val awsAccountId = sys.env("AWS_ACCOUNT_ID")
-    val queue = Uri.unsafeFromString(
-      s"https://sqs.eu-west-1.amazonaws.com/$awsAccountId/test"
-    )
+    val queue = Uri.unsafeFromString(s"https://sqs.eu-west-1.amazonaws.com/$awsAccountId/test")
     val settings = SqsSettings(queue, AwsAuth(accessKey, secretKey, "eu-west-1"))
     val consumerSettings = ConsumerSettings(
       queue = settings.queue,
@@ -85,8 +83,8 @@ object Main extends IOApp {
       .withMaxConnectionsPerRequestKey(Function.const(2048))
       .resource
 
-    val producerResource = clientResource.map { implicit client =>
-      SqsProducer.instance[IO, Event](settings)
+    val producerResource = clientResource.map { client =>
+      SqsProducer[Event](client, settings)
     }
 
     val producingStream = Stream.resource(producerResource).flatMap { producer =>
@@ -97,8 +95,8 @@ object Main extends IOApp {
         .evalMap(e => producer.produce(e) >> IO(println("++ Produced: " + e)))
     }
 
-    val consumerResource = clientResource.map { implicit client =>
-      SqsConsumer.instance[IO, Event](consumerSettings)
+    val consumerResource = clientResource.map { client =>
+      SqsConsumer[Event](client, consumerSettings)
     }
 
     val consumingStream = Stream.resource(consumerResource).flatMap { consumer =>
@@ -107,10 +105,10 @@ object Main extends IOApp {
       }
     }
 
-      Stream(
-        producingStream,
-        consumingStream
-      ).parJoinUnbounded.compile.drain.as(ExitCode.Success)
+    Stream(
+      producingStream,
+      consumingStream
+    ).parJoinUnbounded.compile.drain.as(ExitCode.Success)
   }
 }
 ```

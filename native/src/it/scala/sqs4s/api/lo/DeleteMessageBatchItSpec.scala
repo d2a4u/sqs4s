@@ -31,9 +31,9 @@ class DeleteMessageBatchItSpec extends IOSpec {
 
   it should "raise error for error response" in {
     BlazeClientBuilder[IO](ec).resource
-      .use { implicit client =>
+      .use { client =>
         DeleteMessageBatch[IO](Chunk(DeleteMessageBatch.Entry("1", "test")))
-          .runWith(settings)
+          .runWith(client, settings)
       }
       .attempt
       .unsafeRunSync()

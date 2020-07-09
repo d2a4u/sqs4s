@@ -31,8 +31,8 @@ class CreateQueueItSpec extends IOSpec {
 
   it should "raise error for error response" in {
     BlazeClientBuilder[IO](ec).resource
-      .use { implicit client =>
-        CreateQueue[IO]("test", sqsEndpoint).runWith(settings)
+      .use { client =>
+        CreateQueue[IO]("test", sqsEndpoint).runWith(client, settings)
       }
       .attempt
       .unsafeRunSync()

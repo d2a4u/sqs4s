@@ -22,7 +22,7 @@ trait SqsConsumer[F[_], T] {
     process: T => F[Unit]
   ): Stream[F, Unit]
 
-  def dequeue(): Stream[F, T]
+  def dequeue: Stream[F, T]
 
   // not suitable for FIFO queue
   def dequeueAsync(
@@ -36,159 +36,161 @@ trait SqsConsumer[F[_], T] {
 }
 
 object SqsConsumer {
-  def instance[F[
-    _
-  ]: Concurrent: Parallel: Clock: Timer: Client, T: SqsDeserializer[F, *]](
-    consumerSettings: ConsumerSettings
-  ): SqsConsumer[F, T] =
-    new SqsConsumer[F, T] {
-      private val settings =
-        SqsSettings(consumerSettings.queue, consumerSettings.auth)
+  def apply[T]: ApplyPartiallyApplied[T] = new ApplyPartiallyApplied(dummy = true)
 
-      override def consume(process: T => F[Unit]): F[Unit] = {
-        def ack: Pipe[F, Chunk[ReceiveMessage.Result[T]], Unit] =
-          input => {
-            val toAck = input.evalMap { chunk =>
+  private[hi] final class ApplyPartiallyApplied[T] private[SqsConsumer] (private val dummy: Boolean) extends AnyVal {
+    def apply[F[_]: Concurrent: Parallel: Clock: Timer: SqsDeserializer[*[_], T]](
+      client: Client[F], consumerSettings: ConsumerSettings
+    ): SqsConsumer[F, T] =
+      new SqsConsumer[F, T] {
+        private val settings =
+          SqsSettings(consumerSettings.queue, consumerSettings.auth)
+
+        override def consume(process: T => F[Unit]): F[Unit] = {
+          def ack: Pipe[F, Chunk[ReceiveMessage.Result[T]], Unit] =
+            input => {
+              val toAck = input.evalMap { chunk =>
+                chunk
+                  .parTraverse { entry =>
+                    process(entry.body).as(DeleteMessage[F](entry.receiptHandle))
+                  }
+              }
+              toAck.flatMap { chunk =>
+                Stream.chunk[F, DeleteMessage[F]](chunk).flatMap { del =>
+                  retry(del.runWith(client, settings).void)
+                }
+              }
+            }
+
+          Stream
+            .repeatEval(read)
+            .metered(consumerSettings.pollingRate)
+            .filter(_.nonEmpty)
+            .broadcastThrough(ack)
+            .compile
+            .drain
+        }
+
+        override def consumeAsync(
+          maxConcurrent: Int,
+          groupWithin: FiniteDuration = 1.second
+        )(process: T => F[Unit]): Stream[F, Unit] = {
+          import DeleteMessageBatch._
+
+          val ack: Pipe[F, Chunk[ReceiveMessage.Result[T]], Unit] =
+            _.mapAsync(maxConcurrent) { chunk => // chunk of up to 10 elems
               chunk
                 .parTraverse { entry =>
-                  process(entry.body).as(DeleteMessage[F](entry.receiptHandle))
+                  process(entry.body)
+                    .as(Entry(entry.messageId, entry.receiptHandle))
+                }
+                .flatMap { entries =>
+                  retry(DeleteMessageBatch[F](entries).runWith(client, settings))
+                    .evalMap { result =>
+                      result.errors match {
+                        case head :: tail =>
+                          DeleteMessageBatchErrors(
+                            NonEmptyList.of(head, tail: _*)
+                          ).raiseError[F, Unit]
+                        case Nil => ().pure[F]
+                      }
+                    }
+                    .compile
+                    .lastOrError
                 }
             }
-            toAck.flatMap { chunk =>
-              Stream.chunk[F, DeleteMessage[F]](chunk).flatMap { del =>
-                retry(del.runWith(settings).void)
-              }
-            }
-          }
 
-        Stream
-          .repeatEval(read)
-          .metered(consumerSettings.pollingRate)
-          .filter(_.nonEmpty)
-          .broadcastThrough(ack)
-          .compile
-          .drain
-      }
-
-      override def consumeAsync(
-        maxConcurrent: Int,
-        groupWithin: FiniteDuration = 1.second
-      )(process: T => F[Unit]): Stream[F, Unit] = {
-        import DeleteMessageBatch._
-
-        val ack: Pipe[F, Chunk[ReceiveMessage.Result[T]], Unit] =
-          _.mapAsync(maxConcurrent) { chunk => // chunk of up to 10 elems
-            chunk
-              .parTraverse { entry =>
-                process(entry.body)
-                  .as(Entry(entry.messageId, entry.receiptHandle))
-              }
-              .flatMap { entries =>
-                retry(DeleteMessageBatch[F](entries).runWith(settings))
-                  .evalMap { result =>
-                    result.errors match {
-                      case head :: tail =>
-                        DeleteMessageBatchErrors(
-                          NonEmptyList.of(head, tail: _*)
-                        ).raiseError[F, Unit]
-                      case Nil => ().pure[F]
-                    }
-                  }
-                  .compile
-                  .lastOrError
-              }
-          }
-
-        Stream
-          .constant[F, ReceiveMessage[F, T]](
-            ReceiveMessage[F, T](
-              consumerSettings.maxRead,
-              consumerSettings.visibilityTimeout,
-              consumerSettings.waitTimeSeconds
+          Stream
+            .constant[F, ReceiveMessage[F, T]](
+              ReceiveMessage[F, T](
+                consumerSettings.maxRead,
+                consumerSettings.visibilityTimeout,
+                consumerSettings.waitTimeSeconds
+              )
             )
-          )
-          .metered(consumerSettings.pollingRate)
-          .mapAsync(maxConcurrent)(_.runWith(settings))
-          .filter(_.nonEmpty)
-          .broadcastThrough(ack)
-      }
+            .metered(consumerSettings.pollingRate)
+            .mapAsync(maxConcurrent)(_.runWith(client, settings))
+            .filter(_.nonEmpty)
+            .broadcastThrough(ack)
+        }
 
-      override def dequeue(): Stream[F, T] = {
-        val delete: Pipe[F, Chunk[ReceiveMessage.Result[T]], T] =
-          _.flatMap { res =>
-            Stream.chunk(res).flatMap { result =>
-              val r = DeleteMessage[F](result.receiptHandle)
-                .runWith(settings)
-                .as(result.body)
-              Stream.eval(r)
+        override def dequeue: Stream[F, T] = {
+          val delete: Pipe[F, Chunk[ReceiveMessage.Result[T]], T] =
+            _.flatMap { res =>
+              Stream.chunk(res).flatMap { result =>
+                val r = DeleteMessage[F](result.receiptHandle)
+                  .runWith(client, settings)
+                  .as(result.body)
+                Stream.eval(r)
+              }
             }
-          }
-        Stream
-          .repeatEval(read)
-          .metered(consumerSettings.pollingRate)
-          .filter(_.nonEmpty)
-          .broadcastThrough(delete)
-      }
+          Stream
+            .repeatEval(read)
+            .metered(consumerSettings.pollingRate)
+            .filter(_.nonEmpty)
+            .broadcastThrough(delete)
+        }
 
-      override def dequeueAsync(
-        maxConcurrent: Int,
-        groupWithin: FiniteDuration = 1.second
-      ): Stream[F, T] = {
-        val delete: Pipe[F, Chunk[ReceiveMessage.Result[T]], Chunk[T]] =
-          _.mapAsync(maxConcurrent) { chunk =>
-            val records = chunk.map(res => (res.messageId, res.body)).toList
-            val entries = chunk.map { result =>
-              DeleteMessageBatch.Entry(result.messageId, result.receiptHandle)
+        override def dequeueAsync(
+          maxConcurrent: Int,
+          groupWithin: FiniteDuration = 1.second
+        ): Stream[F, T] = {
+          val delete: Pipe[F, Chunk[ReceiveMessage.Result[T]], Chunk[T]] =
+            _.mapAsync(maxConcurrent) { chunk =>
+              val records = chunk.map(res => (res.messageId, res.body)).toList
+              val entries = chunk.map { result =>
+                DeleteMessageBatch.Entry(result.messageId, result.receiptHandle)
+              }
+              DeleteMessageBatch(entries).runWith(client, settings).map { deleted =>
+                val ids = deleted.successes.map(_.id)
+                Chunk.seq(records.collect {
+                  case (k, v) if ids.contains(k) => v
+                })
+              }
             }
-            DeleteMessageBatch(entries).runWith(settings).map { deleted =>
-              val ids = deleted.successes.map(_.id)
-              Chunk.seq(records.collect {
-                case (k, v) if ids.contains(k) => v
-              })
-            }
-          }
 
-        Stream
-          .constant[F, ReceiveMessage[F, T]](
-            ReceiveMessage[F, T](
-              consumerSettings.maxRead,
-              consumerSettings.visibilityTimeout,
-              consumerSettings.waitTimeSeconds
+          Stream
+            .constant[F, ReceiveMessage[F, T]](
+              ReceiveMessage[F, T](
+                consumerSettings.maxRead,
+                consumerSettings.visibilityTimeout,
+                consumerSettings.waitTimeSeconds
+              )
             )
-          )
-          .metered(consumerSettings.pollingRate)
-          .mapAsync(maxConcurrent)(_.runWith(settings))
-          .filter(_.nonEmpty)
-          .broadcastThrough(delete)
-          .flatMap(Stream.chunk)
+            .metered(consumerSettings.pollingRate)
+            .mapAsync(maxConcurrent)(_.runWith(client, settings))
+            .filter(_.nonEmpty)
+            .broadcastThrough(delete)
+            .flatMap(Stream.chunk)
+        }
+
+        override def peek(number: Int): Stream[F, T] = {
+          Stream
+            .eval(read)
+            .repeatN(((number / consumerSettings.maxRead) + 1).toLong)
+            .metered(consumerSettings.pollingRate)
+            .flatMap(l => Stream.chunk(l.map(_.body)))
+        }
+
+        override def read: F[Chunk[ReceiveMessage.Result[T]]] =
+          ReceiveMessage[F, T](
+            consumerSettings.maxRead,
+            consumerSettings.visibilityTimeout,
+            consumerSettings.waitTimeSeconds
+          ).runWith(client, settings)
+
+        private def retry[U](f: F[U]) =
+          Stream
+            .retry[F, U](
+              f,
+              consumerSettings.initialDelay,
+              _ * 2,
+              consumerSettings.maxRetry,
+              {
+                case _: TimeoutException => true
+                case _: RetriableServerError => true
+              }
+            )
       }
-
-      override def peek(number: Int): Stream[F, T] = {
-        Stream
-          .eval(read)
-          .repeatN(((number / consumerSettings.maxRead) + 1).toLong)
-          .metered(consumerSettings.pollingRate)
-          .flatMap(l => Stream.chunk(l.map(_.body)))
-      }
-
-      override def read: F[Chunk[ReceiveMessage.Result[T]]] =
-        ReceiveMessage[F, T](
-          consumerSettings.maxRead,
-          consumerSettings.visibilityTimeout,
-          consumerSettings.waitTimeSeconds
-        ).runWith(settings)
-
-      private def retry[U](f: F[U]) =
-        Stream
-          .retry[F, U](
-            f,
-            consumerSettings.initialDelay,
-            _ * 2,
-            consumerSettings.maxRetry,
-            {
-              case _: TimeoutException => true
-              case _: RetriableServerError => true
-            }
-          )
     }
 }
