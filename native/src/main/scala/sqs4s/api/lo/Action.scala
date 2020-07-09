@@ -14,7 +14,7 @@ import scala.xml.{Elem, XML}
 
 abstract class Action[F[_]: Sync, T] {
 
-  def runWith(settings: SqsSettings)(implicit client: Client[F]): F[T] =
+  def runWith(client: Client[F], settings: SqsSettings): F[T] =
     mkRequest(settings)
       .flatMap(req => client.expectOr[Elem](req)(handleError))
       .flatMap(parseResponse)

@@ -31,8 +31,8 @@ class ReceiveMessageItSpec extends IOSpec {
 
   it should "raise error for error response" in {
     BlazeClientBuilder[IO](ec).resource
-      .use { implicit client =>
-        ReceiveMessage[IO, String]().runWith(settings)
+      .use { client =>
+        ReceiveMessage[IO, String]().runWith(client, settings)
       }
       .attempt
       .unsafeRunSync()

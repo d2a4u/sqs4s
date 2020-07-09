@@ -95,9 +95,9 @@ class ClientItSpec extends IOSpec {
     val input = TestMessage.arbStream(numOfMsgs)
 
     val outputF = clientResrc
-      .use { implicit client =>
-        val producer = SqsProducer.instance[IO, TestMessage](settings)
-        val consumer = SqsConsumer.instance[IO, TestMessage](consumerSettings)
+      .use { client =>
+        val producer = SqsProducer[TestMessage](client, settings)
+        val consumer = SqsConsumer[TestMessage](client, consumerSettings)
         producer
           .batchProduce(input, _.int.toString.pure[IO])
           .compile
@@ -131,9 +131,8 @@ class ClientItSpec extends IOSpec {
 
     val outputF = resources.use {
       case (ref, interrupter, client) =>
-        implicit val c = client
-        val producer = SqsProducer.instance[IO, TestMessage](settings)
-        val consumer = SqsConsumer.instance[IO, TestMessage](consumerSettings)
+        val producer = SqsProducer[TestMessage](client, settings)
+        val consumer = SqsConsumer[TestMessage](client, consumerSettings)
         producer
           .batchProduce(inputStream, _.int.toString.pure[IO])
           .compile
@@ -180,9 +179,9 @@ class ClientItSpec extends IOSpec {
     )
 
     val outputF = clientResrc
-      .use { implicit client =>
-        val producer = SqsProducer.instance[IO, TestMessage](settings)
-        val consumer = SqsConsumer.instance[IO, TestMessage](consumerSettings)
+      .use { client =>
+        val producer = SqsProducer[TestMessage](client, settings)
+        val consumer = SqsConsumer[TestMessage](client, consumerSettings)
         inputStream
           .mapAsync(256)(msg => producer.produce(msg))
           .compile

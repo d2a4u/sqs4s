@@ -30,8 +30,8 @@ class DeleteMessageItSpec extends IOSpec {
 
   it should "raise error for error response" in {
     BlazeClientBuilder[IO](ec).resource
-      .use { implicit client =>
-        DeleteMessage[IO](receiptHandle).runWith(settings)
+      .use { client =>
+        DeleteMessage[IO](receiptHandle).runWith(client, settings)
       }
       .attempt
       .unsafeRunSync()

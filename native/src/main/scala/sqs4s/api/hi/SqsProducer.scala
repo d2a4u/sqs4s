@@ -35,49 +35,55 @@ trait SqsProducer[F[_], T] {
 }
 
 object SqsProducer {
-  def instance[F[_]: Clock: Timer: Concurrent: Client, T: SqsSerializer](
-    settings: SqsSettings
-  ) =
-    new SqsProducer[F, T] {
-      override def produce(
-        t: T,
-        attributes: Map[String, String] = Map.empty,
-        delay: Option[Duration] = None,
-        dedupId: Option[String] = None,
-        groupId: Option[String] = None
-      ): F[SendMessage.Result] =
-        SendMessage[F, T](t, attributes, delay, dedupId, groupId)
-          .runWith(settings)
+  def apply[T]: ApplyPartiallyApplied[T] = new ApplyPartiallyApplied(dummy = true)
 
-      override def batchProduce(
-        messages: Stream[F, T],
-        id: T => F[String],
-        attributes: Map[String, String] = Map.empty,
-        delay: Option[Duration] = None,
-        dedupId: Option[String] = None,
-        groupId: Option[String] = None,
-        groupWithin: FiniteDuration = 1.second,
-        maxConcurrent: Int = 128
-      ): Stream[F, SendMessageBatch.Result] =
-        messages
-          .groupWithin(10, groupWithin)
-          .mapAsync(maxConcurrent) { chunk =>
-            val totalSize = chunk
-              .map(t => SqsSerializer.apply[T].serialize(t).getBytes.length)
-              .fold
-            if (totalSize <= 256000) {
-              chunk
-                .traverse { t =>
-                  id(t).map { i =>
-                    SendMessageBatch
-                      .Entry(i, t, attributes, delay, dedupId, groupId)
+  private[hi] final class ApplyPartiallyApplied[T] private[SqsProducer] (private val dummy: Boolean) extends AnyVal {
+    def apply[F[_]](
+      client: Client[F], settings: SqsSettings
+    )(implicit
+      serializer: SqsSerializer[T], ev1: Concurrent[F], ev2: Timer[F], ev3: Clock[F]
+    ): SqsProducer[F, T] =
+      new SqsProducer[F, T] {
+        override def produce(
+          t: T,
+          attributes: Map[String, String] = Map.empty,
+          delay: Option[Duration] = None,
+          dedupId: Option[String] = None,
+          groupId: Option[String] = None
+        ): F[SendMessage.Result] =
+          SendMessage[F, T](t, attributes, delay, dedupId, groupId)
+            .runWith(client, settings)
+
+        override def batchProduce(
+          messages: Stream[F, T],
+          id: T => F[String],
+          attributes: Map[String, String] = Map.empty,
+          delay: Option[Duration] = None,
+          dedupId: Option[String] = None,
+          groupId: Option[String] = None,
+          groupWithin: FiniteDuration = 1.second,
+          maxConcurrent: Int = 128
+        ): Stream[F, SendMessageBatch.Result] =
+          messages
+            .groupWithin(10, groupWithin)
+            .mapAsync(maxConcurrent) { chunk =>
+              val totalSize = chunk
+                .map(t => serializer.serialize(t).getBytes.length)
+                .fold
+              if (totalSize <= 256000) {
+                chunk
+                  .traverse { t =>
+                    id(t).map { i =>
+                      SendMessageBatch
+                        .Entry(i, t, attributes, delay, dedupId, groupId)
+                    }
                   }
-                }
-                .flatMap(SendMessageBatch(_).runWith(settings))
-            } else {
-              MonadError[F, Throwable]
-                .raiseError[SendMessageBatch.Result](MessageTooLarge)
+                  .flatMap(SendMessageBatch(_).runWith(client, settings))
+              } else {
+                MonadError[F, Throwable]
+                  .raiseError[SendMessageBatch.Result](MessageTooLarge)
+              }
             }
-          }
+      }
     }
 }

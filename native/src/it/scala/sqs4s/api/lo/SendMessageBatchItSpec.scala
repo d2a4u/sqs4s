@@ -32,9 +32,9 @@ class SendMessageBatchItSpec extends IOSpec {
 
   it should "raise error for error response" in {
     BlazeClientBuilder[IO](ec).resource
-      .use { implicit client =>
+      .use { client =>
         SendMessageBatch[IO, String](Chunk(SendMessageBatch.Entry("1", "test")))
-          .runWith(settings)
+          .runWith(client, settings)
       }
       .attempt
       .unsafeRunSync()
