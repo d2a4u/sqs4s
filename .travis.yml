@@ -7,12 +7,12 @@ jobs:
     - stage: test
       if: branch != master OR type = pull_request
       script:
-        - sbt ++$TRAVIS_SCALA_VERSION clean update coverage native/test coverageReport
+        - sbt ++$TRAVIS_SCALA_VERSION clean update native/test
       jdk: openjdk11
     - stage: master
       if: branch = master AND type != pull_request
       script:
-        - sbt ++$TRAVIS_SCALA_VERSION clean update coverage native/test native/it:test coverageReport
+        - sbt ++$TRAVIS_SCALA_VERSION clean update native/test native/it:test
       jdk: openjdk11
 
 before_cache:
@@ -23,6 +23,3 @@ cache:
   directories:
     - $HOME/.ivy2/
     - $HOME/.sbt/
-
-after_success:
-  - bash <(curl -s https://codecov.io/bash)
