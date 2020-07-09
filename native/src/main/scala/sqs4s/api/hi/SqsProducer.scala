@@ -35,13 +35,20 @@ trait SqsProducer[F[_], T] {
 }
 
 object SqsProducer {
-  def apply[T]: ApplyPartiallyApplied[T] = new ApplyPartiallyApplied(dummy = true)
+  def apply[T]: ApplyPartiallyApplied[T] =
+    new ApplyPartiallyApplied(dummy = true)
 
-  private[hi] final class ApplyPartiallyApplied[T] private[SqsProducer] (private val dummy: Boolean) extends AnyVal {
+  private[hi] final class ApplyPartiallyApplied[T] private[SqsProducer] (
+    private val dummy: Boolean
+  ) extends AnyVal {
     def apply[F[_]](
-      client: Client[F], settings: SqsSettings
-    )(implicit
-      serializer: SqsSerializer[T], ev1: Concurrent[F], ev2: Timer[F], ev3: Clock[F]
+      client: Client[F],
+      settings: SqsSettings
+    )(
+      implicit serializer: SqsSerializer[T],
+      ev1: Concurrent[F],
+      ev2: Timer[F],
+      ev3: Clock[F]
     ): SqsProducer[F, T] =
       new SqsProducer[F, T] {
         override def produce(
@@ -85,5 +92,5 @@ object SqsProducer {
               }
             }
       }
-    }
+  }
 }

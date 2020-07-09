@@ -2,8 +2,8 @@ import sbt.Keys.organization
 import sbt.addCompilerPlugin
 
 val circeVersion = "0.13.0"
-val fs2Version = "2.3.0"
-val http4sVersion = "0.21.4"
+val fs2Version = "2.4.2"
+val http4sVersion = "0.21.6"
 val logbackVersion = "1.2.3"
 
 val circe = Seq(
@@ -23,7 +23,7 @@ lazy val dependencies = Seq(
 )
 
 lazy val testDependencies = Seq(
-  "org.scalatest" %% "scalatest" % "3.1.2",
+  "org.scalatest" %% "scalatest" % "3.2.0",
   "ch.qos.logback" % "logback-classic" % logbackVersion,
   "ch.qos.logback" % "logback-core" % logbackVersion,
   "org.scalacheck" %% "scalacheck" % "1.14.3"

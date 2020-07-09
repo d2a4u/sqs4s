@@ -36,11 +36,18 @@ trait SqsConsumer[F[_], T] {
 }
 
 object SqsConsumer {
-  def apply[T]: ApplyPartiallyApplied[T] = new ApplyPartiallyApplied(dummy = true)
+  def apply[T]: ApplyPartiallyApplied[T] =
+    new ApplyPartiallyApplied(dummy = true)
 
-  private[hi] final class ApplyPartiallyApplied[T] private[SqsConsumer] (private val dummy: Boolean) extends AnyVal {
-    def apply[F[_]: Concurrent: Parallel: Clock: Timer: SqsDeserializer[*[_], T]](
-      client: Client[F], consumerSettings: ConsumerSettings
+  private[hi] final class ApplyPartiallyApplied[T] private[SqsConsumer] (
+    private val dummy: Boolean
+  ) extends AnyVal {
+    def apply[F[_]: Concurrent: Parallel: Clock: Timer: SqsDeserializer[
+      *[_],
+      T
+    ]](
+      client: Client[F],
+      consumerSettings: ConsumerSettings
     ): SqsConsumer[F, T] =
       new SqsConsumer[F, T] {
         private val settings =
@@ -52,7 +59,9 @@ object SqsConsumer {
               val toAck = input.evalMap { chunk =>
                 chunk
                   .parTraverse { entry =>
-                    process(entry.body).as(DeleteMessage[F](entry.receiptHandle))
+                    process(entry.body).as(
+                      DeleteMessage[F](entry.receiptHandle)
+                    )
                   }
               }
               toAck.flatMap { chunk =>
@@ -85,7 +94,10 @@ object SqsConsumer {
                     .as(Entry(entry.messageId, entry.receiptHandle))
                 }
                 .flatMap { entries =>
-                  retry(DeleteMessageBatch[F](entries).runWith(client, settings))
+                  retry(DeleteMessageBatch[F](entries).runWith(
+                    client,
+                    settings
+                  ))
                     .evalMap { result =>
                       result.errors match {
                         case head :: tail =>
@@ -141,11 +153,12 @@ object SqsConsumer {
               val entries = chunk.map { result =>
                 DeleteMessageBatch.Entry(result.messageId, result.receiptHandle)
               }
-              DeleteMessageBatch(entries).runWith(client, settings).map { deleted =>
-                val ids = deleted.successes.map(_.id)
-                Chunk.seq(records.collect {
-                  case (k, v) if ids.contains(k) => v
-                })
+              DeleteMessageBatch(entries).runWith(client, settings).map {
+                deleted =>
+                  val ids = deleted.successes.map(_.id)
+                  Chunk.seq(records.collect {
+                    case (k, v) if ids.contains(k) => v
+                  })
               }
             }
 
@@ -192,5 +205,5 @@ object SqsConsumer {
               }
             )
       }
-    }
+  }
 }
