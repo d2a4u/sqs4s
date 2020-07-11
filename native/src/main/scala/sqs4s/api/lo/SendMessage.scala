@@ -1,16 +1,16 @@
 package sqs4s.api.lo
 
-import cats.effect.{Clock, Sync}
+import cats.effect.{Clock, Sync, Timer}
 import cats.implicits._
 import org.http4s.Request
-import sqs4s.serialization.SqsSerializer
-import sqs4s.api.SqsSettings
+import sqs4s.api.SqsConfig
 import sqs4s.api.errors.UnexpectedResponseError
+import sqs4s.serialization.SqsSerializer
 
 import scala.concurrent.duration.Duration
 import scala.xml.Elem
 
-case class SendMessage[F[_]: Sync: Clock, T](
+case class SendMessage[F[_]: Sync: Clock: Timer, T](
   message: T,
   attributes: Map[String, String] = Map.empty,
   delay: Option[Duration] = None,
@@ -19,7 +19,7 @@ case class SendMessage[F[_]: Sync: Clock, T](
 )(implicit serializer: SqsSerializer[T])
     extends Action[F, SendMessage.Result] {
 
-  def mkRequest(settings: SqsSettings): F[Request[F]] = {
+  def mkRequest(config: SqsConfig[F]): F[Request[F]] = {
     val params = {
       val queries = List(
         "Action" -> "SendMessage",
@@ -41,7 +41,12 @@ case class SendMessage[F[_]: Sync: Clock, T](
         } ++ queries
     }
 
-    SignedRequest.post(params, settings.queue, settings.auth).render
+    SignedRequest.post[F](
+      params,
+      config.queue,
+      config.credProvider,
+      config.region
+    ).flatMap(_.render)
   }
 
   def parseResponse(response: Elem): F[SendMessage.Result] = {

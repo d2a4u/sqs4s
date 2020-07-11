@@ -14,8 +14,8 @@ import io.circe.{parser, _}
 import org.http4s.Uri
 import org.http4s.client.blaze.BlazeClientBuilder
 import org.scalacheck.{Arbitrary, Gen}
+import sqs4s.IOSpec
 import sqs4s.api._
-import sqs4s.internal.aws4.IOSpec
 import sqs4s.serialization.{SqsDeserializer, SqsSerializer}
 
 import scala.concurrent.duration._
@@ -44,8 +44,6 @@ class ClientItSpec extends IOSpec {
     pollingRate = 2.seconds
   )
 
-  def generate[T](implicit arb: Arbitrary[T]) = arb.arbitrary.sample.get
-
   case class TestMessage(string: String, int: Int, boolean: Boolean)
 
   object TestMessage {
@@ -62,7 +60,7 @@ class ClientItSpec extends IOSpec {
         t.asJson.noSpaces
     }
 
-    implicit val arb: Arbitrary[TestMessage] = {
+    implicit val arbTestMessage: Arbitrary[TestMessage] = {
       val gen = for {
         str <- Gen.alphaNumStr
         int <- Gen.choose(Int.MinValue, Int.MaxValue)
@@ -72,7 +70,7 @@ class ClientItSpec extends IOSpec {
     }
 
     def arbStream(n: Long): Stream[IO, TestMessage] = {
-      val msg = generate[TestMessage]
+      val msg = arb[TestMessage]
       Stream
         .random[IO]
         .map(i => msg.copy(int = i))

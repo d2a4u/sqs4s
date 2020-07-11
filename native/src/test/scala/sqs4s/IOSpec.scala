@@ -1,15 +1,16 @@
-package sqs4s.internal.aws4
+package sqs4s
 
 import java.time.format.DateTimeFormatter
 import java.time.{LocalDateTime, ZoneOffset}
 
 import cats.effect._
+import org.scalacheck.{Arbitrary, Gen}
+import org.scalatest.flatspec.AnyFlatSpecLike
+import org.scalatest.matchers.should.Matchers
 
 import scala.concurrent.ExecutionContext
 import scala.concurrent.ExecutionContext.global
 import scala.concurrent.duration.TimeUnit
-import org.scalatest.flatspec.AnyFlatSpecLike
-import org.scalatest.matchers.should.Matchers
 
 trait IOSpec extends AnyFlatSpecLike with Matchers {
 
@@ -29,4 +30,8 @@ trait IOSpec extends AnyFlatSpecLike with Matchers {
       }
     def monotonic(unit: TimeUnit): IO[Long] = IO(0L)
   }
+
+  def arb[T](implicit arb: Arbitrary[T]) = arb.arbitrary.sample.get
+
+  def gen[T](implicit gen: Gen[T]) = gen.sample.get
 }

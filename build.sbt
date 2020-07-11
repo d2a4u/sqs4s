@@ -15,6 +15,7 @@ val circe = Seq(
 lazy val dependencies = Seq(
   "org.http4s" %% "http4s-blaze-client" % http4sVersion,
   "org.http4s" %% "http4s-scala-xml" % http4sVersion,
+  "org.http4s" %% "http4s-circe" % http4sVersion,
   "org.scala-lang.modules" %% "scala-parser-combinators" % "1.1.2",
   "io.chrisdavenport" %% "log4cats-slf4j" % "1.1.1",
   "co.fs2" %% "fs2-core" % fs2Version,

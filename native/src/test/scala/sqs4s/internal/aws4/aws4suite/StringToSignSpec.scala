@@ -5,6 +5,7 @@ import java.io.File
 import cats.effect.IO
 import cats.implicits._
 import org.scalatest.Inspectors
+import sqs4s.IOSpec
 import sqs4s.internal.aws4._
 import sqs4s.internal.aws4.common._
 

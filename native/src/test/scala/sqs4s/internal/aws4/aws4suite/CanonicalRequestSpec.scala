@@ -5,7 +5,7 @@ import org.http4s.Method._
 import org.http4s._
 import org.http4s.implicits._
 import org.http4s.client.dsl.io._
-import sqs4s.internal.aws4.IOSpec
+import sqs4s.IOSpec
 import sqs4s.internal.aws4.common._
 import sqs4s.internal.models.CReq
 

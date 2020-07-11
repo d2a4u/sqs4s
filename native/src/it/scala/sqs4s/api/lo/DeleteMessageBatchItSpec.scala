@@ -4,9 +4,9 @@ import cats.effect.{Clock, IO}
 import fs2.Chunk
 import org.http4s.Uri
 import org.http4s.client.blaze.BlazeClientBuilder
+import sqs4s.IOSpec
 import sqs4s.api.errors.AwsSqsError
 import sqs4s.api.{AwsAuth, SqsSettings}
-import sqs4s.internal.aws4.IOSpec
 
 import scala.concurrent.duration._
 
