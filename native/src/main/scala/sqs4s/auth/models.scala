@@ -10,7 +10,7 @@ import org.http4s.circe.CirceEntityDecoder.circeEntityDecoder
 
 import scala.util.Try
 
-case class Credential(
+private[sqs4s] case class CredentialResponse(
   accessKeyId: String,
   secretAccessKey: String,
   token: String,
@@ -18,13 +18,13 @@ case class Credential(
   expiration: Instant
 )
 
-object Credential {
+object CredentialResponse {
   private val decodeInstant: Decoder[Instant] = Decoder.decodeString.emapTry {
     str =>
       Try(Instant.parse(str))
   }
 
-  implicit val decoder: Decoder[Credential] = Decoder.instance {
+  implicit val decoder: Decoder[CredentialResponse] = Decoder.instance {
     cursor =>
       (
         cursor.downField("AccessKeyId").as[String],
@@ -32,9 +32,10 @@ object Credential {
         cursor.downField("Token").as[String],
         cursor.downField("LastUpdated").as[Instant](decodeInstant),
         cursor.downField("Expiration").as[Instant](decodeInstant)
-      ).mapN(Credential.apply)
+      ).mapN(CredentialResponse.apply)
   }
 
-  implicit def entityDecoder[F[_]: Sync]: EntityDecoder[F, List[Credential]] =
-    circeEntityDecoder[F, List[Credential]]
+  implicit def entityDecoder[F[_]: Sync]
+    : EntityDecoder[F, List[CredentialResponse]] =
+    circeEntityDecoder[F, List[CredentialResponse]]
 }

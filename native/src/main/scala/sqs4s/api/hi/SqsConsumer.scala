@@ -8,12 +8,12 @@ import fs2._
 import org.http4s.client.Client
 import sqs4s.api.errors.{DeleteMessageBatchErrors, RetriableServerError}
 import sqs4s.api.lo.{DeleteMessage, DeleteMessageBatch, ReceiveMessage}
-import sqs4s.api.{ConsumerConfig, ConsumerSettings, SqsConfig, SqsSettings}
-import sqs4s.auth.BasicCredProvider
+import sqs4s.api.{ConsumerConfig, ConsumerSettings, SqsConfig}
+import sqs4s.auth.BasicCredential
 import sqs4s.serialization.SqsDeserializer
 
-import scala.concurrent.duration._
 import scala.concurrent.TimeoutException
+import scala.concurrent.duration._
 
 trait SqsConsumer[F[_], T] {
   def consume(process: T => F[Unit]): F[Unit]
@@ -54,9 +54,9 @@ object SqsConsumer {
     ): SqsConsumer[F, T] =
       apply[F](
         client,
-        ConsumerConfig[F](
+        ConsumerConfig(
           consumerSettings.queue,
-          BasicCredProvider[F](
+          BasicCredential(
             consumerSettings.auth.accessKey,
             consumerSettings.auth.secretKey
           ),
@@ -75,13 +75,13 @@ object SqsConsumer {
       T
     ]](
       client: Client[F],
-      consumerConfig: ConsumerConfig[F]
+      consumerConfig: ConsumerConfig
     ): SqsConsumer[F, T] =
       new SqsConsumer[F, T] {
         private val config =
-          SqsConfig[F](
+          SqsConfig(
             consumerConfig.queue,
-            consumerConfig.credProvider,
+            consumerConfig.credential,
             consumerConfig.region
           )
 

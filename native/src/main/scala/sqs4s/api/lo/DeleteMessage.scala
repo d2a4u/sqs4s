@@ -11,7 +11,7 @@ import scala.xml.Elem
 case class DeleteMessage[F[_]: Sync: Clock: Timer](receiptHandle: String)
     extends Action[F, DeleteMessage.Result] {
 
-  def mkRequest(config: SqsConfig[F]): F[Request[F]] = {
+  def mkRequest(config: SqsConfig): F[Request[F]] = {
     val params = List(
       "Action" -> "DeleteMessage",
       "ReceiptHandle" -> receiptHandle,
@@ -21,9 +21,9 @@ case class DeleteMessage[F[_]: Sync: Clock: Timer](receiptHandle: String)
     SignedRequest.post[F](
       params,
       config.queue,
-      config.credProvider,
+      config.credential,
       config.region
-    ).flatMap(_.render)
+    ).render
   }
 
   def parseResponse(response: Elem): F[DeleteMessage.Result] = {

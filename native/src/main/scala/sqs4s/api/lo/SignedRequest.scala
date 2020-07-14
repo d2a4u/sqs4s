@@ -2,12 +2,11 @@ package sqs4s.api.lo
 
 import java.util.concurrent.TimeUnit
 
-import cats.Monad
 import cats.effect.{Clock, Sync}
 import cats.implicits._
 import org.http4s.{Method, Request, Uri}
 import sqs4s.api.AwsAuth
-import sqs4s.auth.{BasicCredProvider, CredProvider, TemporaryCredProvider}
+import sqs4s.auth.{BasicCredential, Credential, TemporarySecurityCredential}
 import sqs4s.internal.aws4.common._
 import sqs4s.internal.models.CReq
 
@@ -15,7 +14,7 @@ case class SignedRequest[F[_]: Sync: Clock](
   params: List[(String, String)],
   request: Request[F],
   url: Uri,
-  credProvider: CredProvider[F],
+  credential: Credential,
   region: String
 ) {
   def render: F[Request[F]] = {
@@ -35,13 +34,11 @@ case class SignedRequest[F[_]: Sync: Clock](
           .withExpiresHeaderF[F]()
           .flatMap(_.withXAmzDateHeaderF[F](millis))
       creq = CReq[F](req)
-      accessKey <- credProvider.accessKey
-      secretKey <- credProvider.secretKey
       authed <-
         creq
           .toAuthorizedRequest(
-            accessKey,
-            secretKey,
+            credential.accessKey,
+            credential.secretKey,
             region,
             "sqs",
             millis
@@ -62,11 +59,11 @@ object SignedRequest {
       params,
       request,
       url,
-      BasicCredProvider[F](auth.accessKey, auth.secretKey),
+      BasicCredential(auth.accessKey, auth.secretKey),
       auth.region
     )
 
-  @deprecated("use credProvider instead", "1.1.0")
+  @deprecated("use Credential instead", "1.1.0")
   def post[F[_]: Sync: Clock](
     params: List[(String, String)],
     url: Uri,
@@ -78,7 +75,7 @@ object SignedRequest {
     SignedRequest[F](sortedParams, Request[F](method = Method.POST), url, auth)
   }
 
-  @deprecated("use credProvider instead", "1.1.0")
+  @deprecated("use Credential instead", "1.1.0")
   def get[F[_]: Sync: Clock](
     params: List[(String, String)],
     url: Uri,
@@ -93,58 +90,48 @@ object SignedRequest {
   def post[F[_]: Sync: Clock](
     params: List[(String, String)],
     url: Uri,
-    credProvider: CredProvider[F],
+    credential: Credential,
     region: String
-  ): F[SignedRequest[F]] = {
-    withTempCredParamsF(params, credProvider).map { params =>
-      SignedRequest[F](
-        params,
-        Request[F](method = Method.POST),
-        url,
-        credProvider,
-        region
-      )
-    }
-  }
+  ): SignedRequest[F] =
+    SignedRequest[F](
+      withTempCredParams(params, credential),
+      Request[F](method = Method.POST),
+      url,
+      credential,
+      region
+    )
 
   def get[F[_]: Sync: Clock](
     params: List[(String, String)],
     url: Uri,
-    credProvider: CredProvider[F],
+    credential: Credential,
     region: String
-  ): F[SignedRequest[F]] = {
-    withTempCredParamsF(params, credProvider).map { params =>
-      SignedRequest[F](
-        params,
-        Request[F](method = Method.GET),
-        url,
-        credProvider,
-        region
-      )
-    }
-  }
+  ): SignedRequest[F] =
+    SignedRequest[F](
+      withTempCredParams(params, credential),
+      Request[F](method = Method.GET),
+      url,
+      credential,
+      region
+    )
 
-  private def withTempCredParamsF[F[_]: Monad](
+  private def withTempCredParams(
     params: List[(String, String)],
-    credProvider: CredProvider[F]
-  ) = {
-    credProvider match {
-      case provider: TemporaryCredProvider[F] =>
-        for {
-          token <- provider.sessionToken
-          accessKey <- provider.accessKey
-        } yield {
-          (params ++ List(
-            "SecurityToken" -> token,
-            "AWSAccessKeyId" -> accessKey
-          )).sortBy {
-            case (key, _) => key
-          }
+    credential: Credential
+  ): List[(String, String)] = {
+    credential match {
+      case cred: TemporarySecurityCredential =>
+        (params ++ List(
+          "SecurityToken" -> cred.sessionToken,
+          "AWSAccessKeyId" -> cred.accessKey
+        )).sortBy {
+          case (key, _) => key
         }
+
       case _ =>
         params.sortBy {
           case (key, _) => key
-        }.pure[F]
+        }
     }
   }
 }

@@ -17,7 +17,7 @@ case class ReceiveMessage[F[_]: Sync: Clock: Timer, T](
 )(implicit decoder: SqsDeserializer[F, T])
     extends Action[F, Chunk[ReceiveMessage.Result[T]]] {
 
-  def mkRequest(config: SqsConfig[F]): F[Request[F]] = {
+  def mkRequest(config: SqsConfig): F[Request[F]] = {
     val params = List(
       "Action" -> "ReceiveMessage",
       "MaxNumberOfMessages" -> maxNumberOfMessages.toString,
@@ -29,9 +29,9 @@ case class ReceiveMessage[F[_]: Sync: Clock: Timer, T](
     SignedRequest.post[F](
       params,
       config.queue,
-      config.credProvider,
+      config.credential,
       config.region
-    ).flatMap(_.render)
+    ).render
   }
 
   def parseResponse(response: Elem): F[Chunk[ReceiveMessage.Result[T]]] = {

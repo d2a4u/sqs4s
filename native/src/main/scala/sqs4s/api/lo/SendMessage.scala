@@ -19,7 +19,7 @@ case class SendMessage[F[_]: Sync: Clock: Timer, T](
 )(implicit serializer: SqsSerializer[T])
     extends Action[F, SendMessage.Result] {
 
-  def mkRequest(config: SqsConfig[F]): F[Request[F]] = {
+  def mkRequest(config: SqsConfig): F[Request[F]] = {
     val params = {
       val queries = List(
         "Action" -> "SendMessage",
@@ -44,9 +44,9 @@ case class SendMessage[F[_]: Sync: Clock: Timer, T](
     SignedRequest.post[F](
       params,
       config.queue,
-      config.credProvider,
+      config.credential,
       config.region
-    ).flatMap(_.render)
+    ).render
   }
 
   def parseResponse(response: Elem): F[SendMessage.Result] = {

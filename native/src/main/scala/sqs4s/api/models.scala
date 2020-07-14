@@ -1,7 +1,7 @@
 package sqs4s.api
 
 import org.http4s.Uri
-import sqs4s.auth.CredProvider
+import sqs4s.auth.Credential
 
 import scala.concurrent.duration._
 
@@ -29,18 +29,18 @@ case class ConsumerSettings(
   maxRetry: Int = 10
 )
 
-@deprecated("use CredProvider instead", "1.1.0")
+@deprecated("use Credential instead", "1.1.0")
 case class AwsAuth(accessKey: String, secretKey: String, region: String)
 
-case class SqsConfig[F[_]](
+case class SqsConfig(
   queue: Uri,
-  credProvider: CredProvider[F],
+  credential: Credential,
   region: String
 )
 
-case class ConsumerConfig[F[_]](
+case class ConsumerConfig(
   queue: Uri,
-  credProvider: CredProvider[F],
+  credential: Credential,
   region: String,
   maxRead: Int = 10,
   visibilityTimeout: Int = 15,

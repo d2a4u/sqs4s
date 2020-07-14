@@ -3,16 +3,15 @@ package sqs4s.api.lo
 import cats.MonadError
 import cats.effect.{Sync, Timer}
 import cats.implicits._
-import fs2.{Chunk, Stream}
+import fs2.Chunk
 import org.http4s.client.Client
 import org.http4s.scalaxml._
 import org.http4s.{Request, Response, Status}
 import sqs4s.api.errors.{MessageTooLarge, RetriableServerError, SqsError}
 import sqs4s.api.{SqsConfig, SqsSettings}
+import sqs4s.auth.BasicCredential
 import sqs4s.auth.errors.UnauthorizedAuthError
-import sqs4s.auth.{BasicCredProvider, TemporaryCredProvider}
 
-import scala.concurrent.duration._
 import scala.xml.{Elem, XML}
 
 abstract class Action[F[_]: Sync: Timer, T] {
@@ -27,34 +26,16 @@ abstract class Action[F[_]: Sync: Timer, T] {
   def mkRequest(settings: SqsSettings): F[Request[F]] =
     mkRequest(SqsConfig(
       settings.queue,
-      BasicCredProvider[F](settings.auth.accessKey, settings.auth.secretKey),
+      BasicCredential(settings.auth.accessKey, settings.auth.secretKey),
       settings.auth.region
     ))
 
-  def runWith(client: Client[F], config: SqsConfig[F]): F[T] = {
-    val sent = mkRequest(config)
-      .flatMap(req => client.expectOr[Elem](req)(handleError)).onError {
-        case UnauthorizedAuthError =>
-          config.credProvider match {
-            case provider: TemporaryCredProvider[F] =>
-              provider.refresh.void
+  def runWith(client: Client[F], config: SqsConfig): F[T] =
+    mkRequest(config)
+      .flatMap(req => client.expectOr[Elem](req)(handleError))
+      .flatMap(parseResponse)
 
-            case _ => ().pure[F]
-          }
-      }
-    Stream.retry(
-      sent,
-      0.second,
-      _ => 100.millis,
-      10,
-      {
-        case UnauthorizedAuthError => true
-        case _ => false
-      }
-    ).compile.lastOrError.flatMap(parseResponse)
-  }
-
-  def mkRequest(config: SqsConfig[F]): F[Request[F]]
+  def mkRequest(config: SqsConfig): F[Request[F]]
 
   def parseResponse(response: Elem): F[T]
 
