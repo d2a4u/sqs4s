@@ -32,15 +32,15 @@ case class ConsumerSettings(
 @deprecated("use Credential instead", "1.1.0")
 case class AwsAuth(accessKey: String, secretKey: String, region: String)
 
-case class SqsConfig(
+case class SqsConfig[F[_]](
   queue: Uri,
-  credential: Credential,
+  credential: Credential[F],
   region: String
 )
 
-case class ConsumerConfig(
+case class ConsumerConfig[F[_]](
   queue: Uri,
-  credential: Credential,
+  credential: Credential[F],
   region: String,
   maxRead: Int = 10,
   visibilityTimeout: Int = 15,

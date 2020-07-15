@@ -14,8 +14,8 @@ class SendMessageItSpec extends IOSpec {
 
   val testCurrentMillis = 1586623258684L
   val receiptHandle = "123456"
-  val accessKey = "ACCESS_KEY"
-  val secretKey = "SECRET_KEY"
+  val accessKey = "AWS_ACCESS_KEY_ID"
+  val secretKey = "AWS_SECRET_KEY"
   val settings = SqsSettings(
     Uri.unsafeFromString("https://queue.amazonaws.com/123456789012/MyQueue"),
     AwsAuth(accessKey, secretKey, "eu-west-1")

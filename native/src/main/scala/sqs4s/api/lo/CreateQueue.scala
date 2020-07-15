@@ -19,7 +19,7 @@ case class CreateQueue[F[_]: Sync: Clock: Timer](
   visibilityTimeout: Int = VisibilityTimeout
 ) extends Action[F, CreateQueue.Result] {
 
-  def mkRequest(config: SqsConfig): F[Request[F]] = {
+  def mkRequest(config: SqsConfig[F]): F[Request[F]] = {
     val attributes = List(
       "DelaySeconds" -> delay.toSeconds.toString,
       "MaximumMessageSize" -> maxMessageSize.toString,
@@ -48,7 +48,7 @@ case class CreateQueue[F[_]: Sync: Clock: Timer](
       sqsEndpoint,
       config.credential,
       config.region
-    ).render
+    ).flatMap(_.render)
   }
 
   def parseResponse(response: Elem): F[CreateQueue.Result] = {

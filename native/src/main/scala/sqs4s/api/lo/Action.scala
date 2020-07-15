@@ -24,18 +24,21 @@ abstract class Action[F[_]: Sync: Timer, T] {
 
   @deprecated("use SqsConfig instead", "1.1.0")
   def mkRequest(settings: SqsSettings): F[Request[F]] =
-    mkRequest(SqsConfig(
+    mkRequest(SqsConfig[F](
       settings.queue,
-      BasicCredential(settings.auth.accessKey, settings.auth.secretKey),
+      BasicCredential[F](
+        settings.auth.accessKey.pure[F],
+        settings.auth.secretKey.pure[F]
+      ),
       settings.auth.region
     ))
 
-  def runWith(client: Client[F], config: SqsConfig): F[T] =
+  def runWith(client: Client[F], config: SqsConfig[F]): F[T] =
     mkRequest(config)
       .flatMap(req => client.expectOr[Elem](req)(handleError))
       .flatMap(parseResponse)
 
-  def mkRequest(config: SqsConfig): F[Request[F]]
+  def mkRequest(config: SqsConfig[F]): F[Request[F]]
 
   def parseResponse(response: Elem): F[T]
 

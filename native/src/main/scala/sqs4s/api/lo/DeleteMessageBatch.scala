@@ -27,7 +27,7 @@ case class DeleteMessageBatch[F[_]: Sync: Clock: Timer](
         }
     }
 
-  def mkRequest(config: SqsConfig): F[Request[F]] = {
+  def mkRequest(config: SqsConfig[F]): F[Request[F]] = {
     val params =
       List(
         "Action" -> "DeleteMessageBatch",
@@ -39,7 +39,7 @@ case class DeleteMessageBatch[F[_]: Sync: Clock: Timer](
       config.queue,
       config.credential,
       config.region
-    ).render
+    ).flatMap(_.render)
   }
 
   private def successesEntry(elem: Elem): List[DeleteMessageBatch.Success] =

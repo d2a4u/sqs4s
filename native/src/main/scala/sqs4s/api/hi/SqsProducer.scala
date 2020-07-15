@@ -54,9 +54,9 @@ object SqsProducer {
     ): SqsProducer[F, T] =
       apply[F](
         client,
-        SqsConfig(
+        SqsConfig[F](
           settings.queue,
-          BasicCredential(
+          BasicCredential[F](
             settings.auth.accessKey,
             settings.auth.secretKey
           ),
@@ -66,7 +66,7 @@ object SqsProducer {
 
     def apply[F[_]](
       client: Client[F],
-      config: SqsConfig
+      config: SqsConfig[F]
     )(
       implicit serializer: SqsSerializer[T],
       ev1: Concurrent[F],

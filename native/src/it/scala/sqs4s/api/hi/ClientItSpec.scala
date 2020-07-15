@@ -31,8 +31,6 @@ class ClientItSpec extends IOSpec {
     def monotonic(unit: TimeUnit): IO[Long] = IO(0L)
   }
 
-  val accessKey = sys.env("ACCESS_KEY")
-  val secretKey = sys.env("SECRET_KEY")
   val awsAccountId = sys.env("AWS_ACCOUNT_ID")
   val queue = Uri.unsafeFromString(
     s"https://sqs.eu-west-1.amazonaws.com/$awsAccountId/test"
@@ -89,10 +87,7 @@ class ClientItSpec extends IOSpec {
 
     val result = for {
       client <- Stream.resource(clientResrc)
-      cred <- Stream.resource(Credential.basicResource[IO](
-        accessKey,
-        secretKey
-      ))
+      cred <- Stream.resource(Credential.chainResource[IO](client))
       producer = SqsProducer[TestMessage](
         client,
         SqsConfig(queue, cred, region)
@@ -128,7 +123,7 @@ class ClientItSpec extends IOSpec {
       r <- ref
       interrupter <- Resource.liftF(SignallingRef[IO, Boolean](false))
       client <- clientResrc
-      cred <- Credential.basicResource[IO](accessKey, secretKey)
+      cred <- Credential.chainResource[IO](client)
     } yield (r, interrupter, client, cred)
 
     val outputF = resources.use {
@@ -186,10 +181,7 @@ class ClientItSpec extends IOSpec {
 
     val consumed = for {
       client <- Stream.resource(clientResrc)
-      cred <- Stream.resource(Credential.basicResource[IO](
-        accessKey,
-        secretKey
-      ))
+      cred <- Stream.resource(Credential.chainResource[IO](client))
       producer = SqsProducer[TestMessage](
         client,
         SqsConfig(queue, cred, region)

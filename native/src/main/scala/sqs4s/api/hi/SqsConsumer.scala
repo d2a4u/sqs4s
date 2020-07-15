@@ -56,7 +56,7 @@ object SqsConsumer {
         client,
         ConsumerConfig(
           consumerSettings.queue,
-          BasicCredential(
+          BasicCredential[F](
             consumerSettings.auth.accessKey,
             consumerSettings.auth.secretKey
           ),
@@ -75,7 +75,7 @@ object SqsConsumer {
       T
     ]](
       client: Client[F],
-      consumerConfig: ConsumerConfig
+      consumerConfig: ConsumerConfig[F]
     ): SqsConsumer[F, T] =
       new SqsConsumer[F, T] {
         private val config =

@@ -5,7 +5,8 @@ import org.http4s.Uri
 import org.http4s.client.blaze.BlazeClientBuilder
 import sqs4s.IOSpec
 import sqs4s.api.errors.AwsSqsError
-import sqs4s.api.{AwsAuth, SqsSettings}
+import sqs4s.api.{AwsAuth, SqsConfig, SqsSettings}
+import sqs4s.auth.Credential
 
 import scala.concurrent.duration.TimeUnit
 
@@ -13,13 +14,7 @@ class CreateQueueItSpec extends IOSpec {
 
   val testCurrentMillis = 1586623258684L
   val queueUrl = "https://queue.amazonaws.com/123456789012/MyQueue"
-  val accessKey = "ACCESS_KEY"
-  val secretKey = "SECRET_KEY"
   val sqsEndpoint = Uri.unsafeFromString("https://sqs.eu-west-1.amazonaws.com/")
-  val settings = SqsSettings(
-    Uri.unsafeFromString(""),
-    AwsAuth(accessKey, secretKey, "eu-west-1")
-  )
 
   override implicit lazy val testClock: Clock[IO] = new Clock[IO] {
     def realTime(unit: TimeUnit): IO[Long] = IO.pure(testCurrentMillis)
@@ -30,11 +25,15 @@ class CreateQueueItSpec extends IOSpec {
   behavior.of("CreateQueue integration test")
 
   it should "raise error for error response" in {
-    BlazeClientBuilder[IO](ec).resource
-      .use { client =>
-        CreateQueue[IO]("test", sqsEndpoint).runWith(client, settings)
-      }
-      .attempt
+    val resources = for {
+      client <- BlazeClientBuilder[IO](ec).resource
+      cred <- Credential.chainResource[IO](client)
+    } yield (client, cred)
+    resources.use {
+      case (client, cred) =>
+        val config = SqsConfig(Uri.unsafeFromString(""), cred, "eu-west-1")
+        CreateQueue[IO]("test", sqsEndpoint).runWith(client, config)
+    }.attempt
       .unsafeRunSync()
       .swap
       .getOrElse(throw new Exception("Testing failure")) shouldBe a[AwsSqsError]
