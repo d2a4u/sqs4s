@@ -31,7 +31,7 @@ case class ReceiveMessage[F[_]: Sync: Clock: Timer, T](
       config.queue,
       config.credentials,
       config.region
-    ).flatMap(_.render)
+    ).render
   }
 
   def parseResponse(response: Elem): F[Chunk[ReceiveMessage.Result[T]]] = {

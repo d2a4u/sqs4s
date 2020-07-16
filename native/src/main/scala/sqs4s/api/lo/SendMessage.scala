@@ -46,7 +46,7 @@ case class SendMessage[F[_]: Sync: Clock: Timer, T](
       config.queue,
       config.credentials,
       config.region
-    ).flatMap(_.render)
+    ).render
   }
 
   def parseResponse(response: Elem): F[SendMessage.Result] = {

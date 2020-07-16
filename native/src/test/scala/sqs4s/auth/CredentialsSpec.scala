@@ -4,7 +4,7 @@ import fs2.Stream
 import cats.effect.concurrent.Ref
 import cats.effect.{IO, Resource}
 import cats.implicits._
-import org.http4s.{Credentials => _, _}
+import org.http4s.{Request, Response, Method, EntityDecoder}
 import org.scalacheck.Gen
 import sqs4s.{Arbitraries, IOSpec}
 
@@ -36,47 +36,47 @@ class CredentialsSpec extends IOSpec with Arbitraries {
       }
     }
 
-//  it should "get credential on initialization" in {
-//    Resource.liftF(Ref.of[IO, Int](0)).flatMap { counter =>
-//      Credentials.instanceMetadataResource(
-//        calledCounterMockClient(counter, genCredentials),
-//        2.seconds,
-//        1.second
-//      )
-//    }.use { creds =>
-//      for {
-//        cred <- creds.get
-//        tmp = cred.asInstanceOf[TemporarySecurityCredential]
-//        ak = tmp.accessKey
-//        sk = tmp.secretKey
-//        st = tmp.sessionToken
-//      } yield (ak, sk, st)
-//    }.unsafeRunSync() match {
-//      case (acc, scr, tok) =>
-//        acc shouldBe a[String]
-//        scr shouldBe a[String]
-//        tok shouldBe a[String]
-//
-//      case _ =>
-//        fail()
-//    }
-//  }
-//
-//  it should "refresh token periodically when it expires" in {
-//    val called = Resource.liftF(Ref.of[IO, Int](0)).use { counter =>
-//      Credentials.instanceMetadataResource(
-//        calledCounterMockClient(counter, genCredentials),
-//        2.second,
-//        1.second
-//      ).use { _ =>
-//        IO.sleep(4.seconds)
-//      } >> counter.get
-//    }.unsafeRunSync()
-//
-//    // token TTL is 2 seconds, refresh is called 1 second early, sleep 4 seconds.
-//    // Hence, refresh should have been called 3 times plus 1 initial call.
-//    called should be >= 4
-//  }
+  it should "get credential on initialization" in {
+    Resource.liftF(Ref.of[IO, Int](0)).flatMap { counter =>
+      Credentials.instanceMetadata(
+        calledCounterMockClient(counter, genCredentials),
+        2.seconds,
+        1.second
+      )
+    }.use { creds =>
+      for {
+        cred <- creds.get
+        tmp = cred.asInstanceOf[TemporarySecurityCredential]
+        ak = tmp.accessKey
+        sk = tmp.secretKey
+        st = tmp.sessionToken
+      } yield (ak, sk, st)
+    }.unsafeRunSync() match {
+      case (acc, scr, tok) =>
+        acc shouldBe a[String]
+        scr shouldBe a[String]
+        tok shouldBe a[String]
+
+      case _ =>
+        fail()
+    }
+  }
+
+  it should "refresh token periodically when it expires" in {
+    val called = Resource.liftF(Ref.of[IO, Int](0)).use { counter =>
+      Credentials.instanceMetadata(
+        calledCounterMockClient(counter, genCredentials),
+        2.second,
+        1.second
+      ).use { _ =>
+        IO.sleep(4.seconds)
+      } >> counter.get
+    }.unsafeRunSync()
+
+    // token TTL is 2 seconds, refresh is called 1 second early, sleep 4 seconds.
+    // Hence, refresh should have been called 3 times plus 1 initial call.
+    called should be >= 4
+  }
 
   it should "get different credentials" in {
     def collect(
@@ -91,7 +91,7 @@ class CredentialsSpec extends IOSpec with Arbitraries {
       } yield updated
 
     val creds = Resource.liftF(Ref.of[IO, Int](0)).use { counter =>
-      Credentials.instanceMetadataResource(
+      Credentials.instanceMetadata(
         calledCounterMockClient(counter, genCredentials),
         2.second,
         1.second

@@ -88,7 +88,7 @@ case class SendMessageBatch[F[_]: Sync: Clock: Timer, T](
       config.queue,
       config.credentials,
       config.region
-    ).flatMap(_.render)
+    ).render
   }
 
   def parseResponse(response: Elem): F[SendMessageBatch.Result] = {

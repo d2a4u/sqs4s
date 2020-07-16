@@ -16,7 +16,7 @@ import org.http4s.client.blaze.BlazeClientBuilder
 import org.scalacheck.{Arbitrary, Gen}
 import sqs4s.IOSpec
 import sqs4s.api._
-import sqs4s.auth.Credential
+import sqs4s.auth.Credentials
 import sqs4s.serialization.{SqsDeserializer, SqsSerializer}
 
 import scala.concurrent.duration._
@@ -87,7 +87,7 @@ class ClientItSpec extends IOSpec {
 
     val result = for {
       client <- Stream.resource(clientResrc)
-      cred <- Stream.resource(Credential.chainResource[IO](client))
+      cred <- Stream.resource(Credentials.chain[IO](client))
       producer = SqsProducer[TestMessage](
         client,
         SqsConfig(queue, cred, region)
@@ -123,7 +123,7 @@ class ClientItSpec extends IOSpec {
       r <- ref
       interrupter <- Resource.liftF(SignallingRef[IO, Boolean](false))
       client <- clientResrc
-      cred <- Credential.chainResource[IO](client)
+      cred <- Credentials.chain[IO](client)
     } yield (r, interrupter, client, cred)
 
     val outputF = resources.use {
@@ -181,7 +181,7 @@ class ClientItSpec extends IOSpec {
 
     val consumed = for {
       client <- Stream.resource(clientResrc)
-      cred <- Stream.resource(Credential.chainResource[IO](client))
+      cred <- Stream.resource(Credentials.chain[IO](client))
       producer = SqsProducer[TestMessage](
         client,
         SqsConfig(queue, cred, region)

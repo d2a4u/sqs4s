@@ -48,7 +48,7 @@ case class CreateQueue[F[_]: Sync: Clock: Timer](
       sqsEndpoint,
       config.credentials,
       config.region
-    ).flatMap(_.render)
+    ).render
   }
 
   def parseResponse(response: Elem): F[CreateQueue.Result] = {

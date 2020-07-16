@@ -4,9 +4,9 @@ import cats.effect.{Clock, IO}
 import org.http4s.Uri
 import org.http4s.client.blaze.BlazeClientBuilder
 import sqs4s.IOSpec
+import sqs4s.api.SqsConfig
 import sqs4s.api.errors.AwsSqsError
-import sqs4s.api.{AwsAuth, SqsConfig, SqsSettings}
-import sqs4s.auth.Credential
+import sqs4s.auth.Credentials
 
 import scala.concurrent.duration.TimeUnit
 
@@ -27,7 +27,7 @@ class CreateQueueItSpec extends IOSpec {
   it should "raise error for error response" in {
     val resources = for {
       client <- BlazeClientBuilder[IO](ec).resource
-      cred <- Credential.chainResource[IO](client)
+      cred <- Credentials.chain[IO](client)
     } yield (client, cred)
     resources.use {
       case (client, cred) =>

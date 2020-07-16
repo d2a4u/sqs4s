@@ -23,7 +23,7 @@ case class DeleteMessage[F[_]: Sync: Clock: Timer](receiptHandle: String)
       config.queue,
       config.credentials,
       config.region
-    ).flatMap(_.render)
+    ).render
   }
 
   def parseResponse(response: Elem): F[DeleteMessage.Result] = {

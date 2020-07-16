@@ -39,7 +39,7 @@ case class DeleteMessageBatch[F[_]: Sync: Clock: Timer](
       config.queue,
       config.credentials,
       config.region
-    ).flatMap(_.render)
+    ).render
   }
 
   private def successesEntry(elem: Elem): List[DeleteMessageBatch.Success] =
