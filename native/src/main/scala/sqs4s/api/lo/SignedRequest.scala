@@ -5,9 +5,9 @@ import java.util.concurrent.TimeUnit
 import cats.Monad
 import cats.effect.{Clock, Sync}
 import cats.implicits._
-import org.http4s.{Method, Request, Uri}
+import org.http4s.{Credentials => _, _}
 import sqs4s.api.AwsAuth
-import sqs4s.auth.{BasicCredential, Credential, TemporarySecurityCredential}
+import sqs4s.auth.{Credentials, TemporarySecurityCredential}
 import sqs4s.internal.aws4.common._
 import sqs4s.internal.models.CReq
 
@@ -15,7 +15,7 @@ case class SignedRequest[F[_]: Sync: Clock](
   params: List[(String, String)],
   request: Request[F],
   url: Uri,
-  credential: Credential[F],
+  credentials: Credentials[F],
   region: String
 ) {
   def render: F[Request[F]] = {
@@ -35,13 +35,12 @@ case class SignedRequest[F[_]: Sync: Clock](
           .withExpiresHeaderF[F]()
           .flatMap(_.withXAmzDateHeaderF[F](millis))
       creq = CReq[F](req)
-      accessKey <- credential.accessKey
-      secretKey <- credential.secretKey
+      credential <- credentials.get
       authed <-
         creq
           .toAuthorizedRequest(
-            accessKey,
-            secretKey,
+            credential.accessKey,
+            credential.secretKey,
             region,
             "sqs",
             millis
@@ -62,7 +61,7 @@ object SignedRequest {
       params,
       request,
       url,
-      BasicCredential[F](auth.accessKey, auth.secretKey),
+      Credentials.basic[F](auth.accessKey, auth.secretKey),
       auth.region
     )
 
@@ -93,15 +92,15 @@ object SignedRequest {
   def post[F[_]: Sync: Clock](
     params: List[(String, String)],
     url: Uri,
-    credential: Credential[F],
+    credentials: Credentials[F],
     region: String
   ): F[SignedRequest[F]] =
-    withTempCredParams(params, credential).map { pr =>
+    withTempCredParams(params, credentials).map { pr =>
       SignedRequest[F](
         pr,
         Request[F](method = Method.POST),
         url,
-        credential,
+        credentials,
         region
       )
     }
@@ -109,41 +108,35 @@ object SignedRequest {
   def get[F[_]: Sync: Clock](
     params: List[(String, String)],
     url: Uri,
-    credential: Credential[F],
+    credentials: Credentials[F],
     region: String
   ): F[SignedRequest[F]] =
-    withTempCredParams(params, credential).map { pr =>
+    withTempCredParams(params, credentials).map { pr =>
       SignedRequest[F](
         pr,
         Request[F](method = Method.GET),
         url,
-        credential,
+        credentials,
         region
       )
     }
 
   private def withTempCredParams[F[_]: Monad](
     params: List[(String, String)],
-    credential: Credential[F]
-  ): F[List[(String, String)]] = {
-    credential match {
-      case cred: TemporarySecurityCredential[F] =>
-        for {
-          st <- cred.sessionToken
-          ak <- cred.accessKey
-        } yield {
-          (params ++ List(
-            "SecurityToken" -> st,
-            "AWSAccessKeyId" -> ak
-          )).sortBy {
-            case (key, _) => key
-          }
+    credentials: Credentials[F]
+  ): F[List[(String, String)]] =
+    credentials.get.map {
+      case cred: TemporarySecurityCredential =>
+        (params ++ List(
+          "SecurityToken" -> cred.sessionToken,
+          "AWSAccessKeyId" -> cred.accessKey
+        )).sortBy {
+          case (key, _) => key
         }
 
       case _ =>
         params.sortBy {
           case (key, _) => key
-        }.pure[F]
+        }
     }
-  }
 }

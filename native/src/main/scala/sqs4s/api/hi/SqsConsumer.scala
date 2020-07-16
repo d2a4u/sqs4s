@@ -9,7 +9,7 @@ import org.http4s.client.Client
 import sqs4s.api.errors.{DeleteMessageBatchErrors, RetriableServerError}
 import sqs4s.api.lo.{DeleteMessage, DeleteMessageBatch, ReceiveMessage}
 import sqs4s.api.{ConsumerConfig, ConsumerSettings, SqsConfig}
-import sqs4s.auth.BasicCredential
+import sqs4s.auth.Credentials
 import sqs4s.serialization.SqsDeserializer
 
 import scala.concurrent.TimeoutException
@@ -56,7 +56,7 @@ object SqsConsumer {
         client,
         ConsumerConfig(
           consumerSettings.queue,
-          BasicCredential[F](
+          Credentials.basic[F](
             consumerSettings.auth.accessKey,
             consumerSettings.auth.secretKey
           ),
@@ -81,7 +81,7 @@ object SqsConsumer {
         private val config =
           SqsConfig(
             consumerConfig.queue,
-            consumerConfig.credential,
+            consumerConfig.credentials,
             consumerConfig.region
           )
 

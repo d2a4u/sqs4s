@@ -37,7 +37,7 @@ case class DeleteMessageBatch[F[_]: Sync: Clock: Timer](
     SignedRequest.post[F](
       params,
       config.queue,
-      config.credential,
+      config.credentials,
       config.region
     ).flatMap(_.render)
   }

@@ -86,7 +86,7 @@ case class SendMessageBatch[F[_]: Sync: Clock: Timer, T](
     SignedRequest.post[F](
       params,
       config.queue,
-      config.credential,
+      config.credentials,
       config.region
     ).flatMap(_.render)
   }

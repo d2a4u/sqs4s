@@ -8,7 +8,7 @@ import org.http4s.client.Client
 import sqs4s.api.errors.MessageTooLarge
 import sqs4s.api.lo.{SendMessage, SendMessageBatch}
 import sqs4s.api.{SqsConfig, SqsSettings}
-import sqs4s.auth.BasicCredential
+import sqs4s.auth.Credentials
 import sqs4s.serialization.SqsSerializer
 
 import scala.concurrent.duration._
@@ -56,7 +56,7 @@ object SqsProducer {
         client,
         SqsConfig[F](
           settings.queue,
-          BasicCredential[F](
+          Credentials.basic[F](
             settings.auth.accessKey,
             settings.auth.secretKey
           ),

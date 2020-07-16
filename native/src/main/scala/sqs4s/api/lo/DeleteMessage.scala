@@ -21,7 +21,7 @@ case class DeleteMessage[F[_]: Sync: Clock: Timer](receiptHandle: String)
     SignedRequest.post[F](
       params,
       config.queue,
-      config.credential,
+      config.credentials,
       config.region
     ).flatMap(_.render)
   }

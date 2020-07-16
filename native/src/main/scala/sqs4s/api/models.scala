@@ -1,7 +1,7 @@
 package sqs4s.api
 
 import org.http4s.Uri
-import sqs4s.auth.Credential
+import sqs4s.auth.Credentials
 
 import scala.concurrent.duration._
 
@@ -34,13 +34,13 @@ case class AwsAuth(accessKey: String, secretKey: String, region: String)
 
 case class SqsConfig[F[_]](
   queue: Uri,
-  credential: Credential[F],
+  credentials: Credentials[F],
   region: String
 )
 
 case class ConsumerConfig[F[_]](
   queue: Uri,
-  credential: Credential[F],
+  credentials: Credentials[F],
   region: String,
   maxRead: Int = 10,
   visibilityTimeout: Int = 15,

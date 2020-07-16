@@ -9,7 +9,7 @@ import org.http4s.scalaxml._
 import org.http4s.{Request, Response, Status}
 import sqs4s.api.errors.{MessageTooLarge, RetriableServerError, SqsError}
 import sqs4s.api.{SqsConfig, SqsSettings}
-import sqs4s.auth.BasicCredential
+import sqs4s.auth.Credentials
 import sqs4s.auth.errors.UnauthorizedAuthError
 
 import scala.xml.{Elem, XML}
@@ -26,9 +26,9 @@ abstract class Action[F[_]: Sync: Timer, T] {
   def mkRequest(settings: SqsSettings): F[Request[F]] =
     mkRequest(SqsConfig[F](
       settings.queue,
-      BasicCredential[F](
-        settings.auth.accessKey.pure[F],
-        settings.auth.secretKey.pure[F]
+      Credentials.basic[F](
+        settings.auth.accessKey,
+        settings.auth.secretKey
       ),
       settings.auth.region
     ))

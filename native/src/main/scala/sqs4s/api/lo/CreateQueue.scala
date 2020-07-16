@@ -46,7 +46,7 @@ case class CreateQueue[F[_]: Sync: Clock: Timer](
     SignedRequest.get[F](
       params,
       sqsEndpoint,
-      config.credential,
+      config.credentials,
       config.region
     ).flatMap(_.render)
   }
