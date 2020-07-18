@@ -13,7 +13,7 @@ val circe = Seq(
 ).map(_ % circeVersion)
 
 lazy val dependencies = Seq(
-  "org.http4s" %% "http4s-blaze-client" % http4sVersion,
+  "org.http4s" %% "http4s-client" % http4sVersion,
   "org.http4s" %% "http4s-scala-xml" % http4sVersion,
   "org.scala-lang.modules" %% "scala-parser-combinators" % "1.1.2",
   "io.chrisdavenport" %% "log4cats-slf4j" % "1.1.1",
@@ -23,6 +23,7 @@ lazy val dependencies = Seq(
 )
 
 lazy val testDependencies = Seq(
+  "org.http4s" %% "http4s-blaze-client" % http4sVersion,
   "org.scalatest" %% "scalatest" % "3.2.0",
   "ch.qos.logback" % "logback-classic" % logbackVersion,
   "ch.qos.logback" % "logback-core" % logbackVersion,
@@ -31,8 +32,8 @@ lazy val testDependencies = Seq(
 
 lazy val commonSettings = Seq(
   organization in ThisBuild := "io.sqs4s",
-  scalaVersion := "2.13.2",
-  crossScalaVersions := Seq("2.12.11", "2.13.2"),
+  scalaVersion := "2.13.3",
+  crossScalaVersions := Seq("2.12.12", "2.13.3"),
   parallelExecution in Test := false,
   scalafmtOnCompile := true,
   licenses += ("MIT", url("http://opensource.org/licenses/MIT")),
