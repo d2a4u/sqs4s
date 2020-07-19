@@ -77,19 +77,18 @@ object Credentials {
     client: Client[F],
     ttl: FiniteDuration = 6.hours,
     refreshBefore: FiniteDuration = 5.minutes
-  ): Resource[F, Credentials[F]] =
-    envVar[F] orElse sysProp[F] orElse containerMetadata[F](
-      client,
-      ttl,
-      refreshBefore
-    ) orElse instanceMetadata[F](
-      client,
-      ttl,
-      refreshBefore
-    ).handleErrorWith(_ =>
-      Resource.liftF(
-        Sync[F].raiseError[Credentials[F]](NoValidAuthMethodError)
-      ))
+  ): Resource[F, Credentials[F]] = {
+    val env = envVar[F]
+    val sys = sysProp[F]
+    val container = containerMetadata[F](client, ttl, refreshBefore)
+    val instance = instanceMetadata[F](client, ttl, refreshBefore)
+
+    val tryAllInOrder = env orElse sys orElse container orElse instance
+
+    tryAllInOrder.handleErrorWith { _ =>
+      Resource.liftF(Sync[F].raiseError[Credentials[F]](NoValidAuthMethodError))
+    }
+  }
 
   def envVar[F[_]: Sync]: Resource[F, Credentials[F]] =
     Resource.liftF {
@@ -117,17 +116,18 @@ object Credentials {
         secretKey <- secretKeyF
         optSessionToken <- optSessionTokenF
       } yield {
-        optSessionToken.map(token =>
-          Credentials.temporal[F](
-            accessKey,
-            secretKey,
-            token
-          )).getOrElse(
+        optSessionToken.fold(
           Credentials.basic[F](
             accessKey,
             secretKey
           )
-        )
+        ) { token =>
+          Credentials.temporal[F](
+            accessKey,
+            secretKey,
+            token
+          )
+        }
       }
     }
 
@@ -148,19 +148,19 @@ object Credentials {
         secretKey <- secretKeyF
         optSessionToken <- optSessionTokenF
       } yield {
-        optSessionToken.map(token =>
-          Credentials.temporal[F](
-            accessKey,
-            secretKey,
-            token
-          )).getOrElse(
+        optSessionToken.fold(
           Credentials.basic[F](
             accessKey,
             secretKey
           )
-        )
+        ) { token =>
+          Credentials.temporal[F](
+            accessKey,
+            secretKey,
+            token
+          )
+        }
       }
-
     }
 
   def containerMetadata[F[_]: Concurrent: Clock: Timer](
