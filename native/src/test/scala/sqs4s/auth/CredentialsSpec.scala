@@ -41,7 +41,8 @@ class CredentialsSpec extends IOSpec with Arbitraries {
       Credentials.instanceMetadata(
         calledCounterMockClient(counter, genCredentials),
         2.seconds,
-        1.second
+        1.second,
+        allowRedirect = false
       )
     }.use { creds =>
       for {
@@ -67,7 +68,8 @@ class CredentialsSpec extends IOSpec with Arbitraries {
       Credentials.instanceMetadata(
         calledCounterMockClient(counter, genCredentials),
         2.second,
-        1.second
+        1.second,
+        allowRedirect = false
       ).use { _ =>
         IO.sleep(4.seconds)
       } >> counter.get
@@ -94,7 +96,8 @@ class CredentialsSpec extends IOSpec with Arbitraries {
       Credentials.instanceMetadata(
         calledCounterMockClient(counter, genCredentials),
         2.second,
-        1.second
+        1.second,
+        allowRedirect = false
       ).use { creds =>
         for {
           ref <- Ref[IO].of(Set.empty[TemporarySecurityCredential])

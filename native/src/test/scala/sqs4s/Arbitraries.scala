@@ -11,16 +11,16 @@ trait Arbitraries {
       accessKeyId <- Gen.alphaNumStr
       secretAccessKey <- Gen.alphaNumStr
       token <- Gen.alphaNumStr
-      lastUpdated <- Gen.chooseNum(1L, 1000L).map(num =>
-        Instant.now().plusSeconds(num))
+      optLastUpdated <- Gen.option(Gen.chooseNum(1L, 1000L).map(num =>
+        Instant.now().minusSeconds(num)))
       expiration <- Gen.chooseNum(1L, 1000L).map(num =>
-        lastUpdated.plusSeconds(num))
+        Instant.now().plusSeconds(num))
     } yield {
       CredentialResponse(
         accessKeyId,
         secretAccessKey,
         token,
-        lastUpdated,
+        optLastUpdated,
         expiration
       )
     }

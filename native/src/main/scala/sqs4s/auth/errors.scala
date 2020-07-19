@@ -9,19 +9,24 @@ object errors {
     override def getMessage: String = "Missing role"
   }
 
-  case object NoEnvironmentVariablesFound extends AuthError {
+  case class NoEnvironmentVariablesFound(name: String) extends AuthError {
     override def getMessage: String =
-      "Missing AWS_ACCESS_KEY_ID and/or AWS_SECRET_KEY environment variables"
+      s"Missing $name environment variable"
   }
 
-  case object NoSystemPropertiesFound extends AuthError {
+  case class NoSystemPropertiesFound(name: String) extends AuthError {
     override def getMessage: String =
-      "Missing aws.accessKeyId and/or aws.secretKey system properties"
+      s"Missing $name system property"
   }
 
   case class UnknownAuthError(status: Status) extends AuthError {
     override def getMessage: String =
       s"Unknown error while getting credential, status ${status.code}"
+  }
+
+  case object NoValidAuthMethodError extends AuthError {
+    override def getMessage: String =
+      "Could not find valid credential in credentials chain"
   }
 
   case object RetriableServerError extends AuthError
