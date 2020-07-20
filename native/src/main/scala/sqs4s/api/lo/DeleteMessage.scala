@@ -1,24 +1,29 @@
 package sqs4s.api.lo
 
-import cats.effect.{Clock, Sync}
+import cats.effect.{Clock, Sync, Timer}
 import cats.implicits._
 import org.http4s.Request
-import sqs4s.api.SqsSettings
+import sqs4s.api.SqsConfig
 import sqs4s.api.errors.UnexpectedResponseError
 
 import scala.xml.Elem
 
-case class DeleteMessage[F[_]: Sync: Clock](receiptHandle: String)
+case class DeleteMessage[F[_]: Sync: Clock: Timer](receiptHandle: String)
     extends Action[F, DeleteMessage.Result] {
 
-  def mkRequest(settings: SqsSettings): F[Request[F]] = {
+  def mkRequest(config: SqsConfig[F]): F[Request[F]] = {
     val params = List(
       "Action" -> "DeleteMessage",
       "ReceiptHandle" -> receiptHandle,
       "Version" -> "2012-11-05"
     )
 
-    SignedRequest.post(params, settings.queue, settings.auth).render
+    SignedRequest.post[F](
+      params,
+      config.queue,
+      config.credentials,
+      config.region
+    ).render
   }
 
   def parseResponse(response: Elem): F[DeleteMessage.Result] = {

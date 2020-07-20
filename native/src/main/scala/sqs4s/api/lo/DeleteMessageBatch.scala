@@ -1,15 +1,15 @@
 package sqs4s.api.lo
 
-import cats.effect.{Clock, Sync}
+import cats.effect.{Clock, Sync, Timer}
 import cats.implicits._
 import fs2.Chunk
 import org.http4s.Request
-import sqs4s.api.SqsSettings
+import sqs4s.api.SqsConfig
 import sqs4s.api.errors.UnexpectedResponseError
 
 import scala.xml.Elem
 
-case class DeleteMessageBatch[F[_]: Sync: Clock](
+case class DeleteMessageBatch[F[_]: Sync: Clock: Timer](
   entries: Chunk[DeleteMessageBatch.Entry]
 ) extends Action[F, DeleteMessageBatch.Result] {
 
@@ -27,14 +27,19 @@ case class DeleteMessageBatch[F[_]: Sync: Clock](
         }
     }
 
-  def mkRequest(settings: SqsSettings): F[Request[F]] = {
+  def mkRequest(config: SqsConfig[F]): F[Request[F]] = {
     val params =
       List(
         "Action" -> "DeleteMessageBatch",
         "Version" -> "2012-11-05"
       ) ++ receiptHandles
 
-    SignedRequest.post(params, settings.queue, settings.auth).render
+    SignedRequest.post[F](
+      params,
+      config.queue,
+      config.credentials,
+      config.region
+    ).render
   }
 
   private def successesEntry(elem: Elem): List[DeleteMessageBatch.Success] =

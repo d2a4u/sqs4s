@@ -33,6 +33,41 @@ BlazeClientBuilder[IO](ec)
   }.unsafeRunSync()
 ```
 
+## Use Credential resource
+
+```scala
+val clientSrc = BlazeClientBuilder[IO](ec)
+  .withMaxTotalConnections(256)
+  .withMaxWaitQueueLimit(2048)
+  .withMaxConnectionsPerRequestKey(Function.const(2048))
+  .resource
+
+val consumed = for {
+  client <- Stream.resource(clientSrc)
+  cred <- Stream.resource(Credential.instanceMetadataResource(
+    client,
+    6.hours,
+    5.minutes
+  ))
+  producer = SqsProducer[TestMessage](
+    client,
+    SqsConfig(queue, cred, region)
+  )
+  consumer = SqsConsumer[TestMessage](
+    client,
+    ConsumerConfig(
+      queue = queue,
+      credential = cred,
+      region = region,
+      waitTimeSeconds = Some(1),
+      pollingRate = 2.seconds
+    )
+  )
+  _ <- producer.batchProduce(input, _.int.toString.pure[IO])
+  result <- consumer.dequeueAsync(256)
+} yield result
+```
+
 ## Pub/Sub
 
 ```scala

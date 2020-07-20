@@ -1,17 +1,17 @@
 package sqs4s.api.lo
 
-import cats.effect.{Clock, Sync}
+import cats.effect.{Clock, Sync, Timer}
 import cats.implicits._
 import fs2.Chunk
 import org.http4s.Request
-import sqs4s.api.SqsSettings
+import sqs4s.api.SqsConfig
 import sqs4s.api.errors.UnexpectedResponseError
 import sqs4s.serialization.SqsSerializer
 
 import scala.concurrent.duration.Duration
 import scala.xml.Elem
 
-case class SendMessageBatch[F[_]: Sync: Clock, T](
+case class SendMessageBatch[F[_]: Sync: Clock: Timer, T](
   messages: Chunk[SendMessageBatch.Entry[T]]
 )(implicit serializer: SqsSerializer[T])
     extends Action[F, SendMessageBatch.Result] {
@@ -79,11 +79,16 @@ case class SendMessageBatch[F[_]: Sync: Clock, T](
       )
     }
 
-  def mkRequest(settings: SqsSettings): F[Request[F]] = {
+  def mkRequest(config: SqsConfig[F]): F[Request[F]] = {
     val params =
       List("Action" -> "SendMessageBatch", "Version" -> "2012-11-05") ++ entries
 
-    SignedRequest.post(params, settings.queue, settings.auth).render
+    SignedRequest.post[F](
+      params,
+      config.queue,
+      config.credentials,
+      config.region
+    ).render
   }
 
   def parseResponse(response: Elem): F[SendMessageBatch.Result] = {

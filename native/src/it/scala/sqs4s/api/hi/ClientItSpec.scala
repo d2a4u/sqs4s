@@ -14,8 +14,9 @@ import io.circe.{parser, _}
 import org.http4s.Uri
 import org.http4s.client.blaze.BlazeClientBuilder
 import org.scalacheck.{Arbitrary, Gen}
+import sqs4s.IOSpec
 import sqs4s.api._
-import sqs4s.internal.aws4.IOSpec
+import sqs4s.auth.Credentials
 import sqs4s.serialization.{SqsDeserializer, SqsSerializer}
 
 import scala.concurrent.duration._
@@ -30,21 +31,11 @@ class ClientItSpec extends IOSpec {
     def monotonic(unit: TimeUnit): IO[Long] = IO(0L)
   }
 
-  val accessKey = sys.env("ACCESS_KEY")
-  val secretKey = sys.env("SECRET_KEY")
   val awsAccountId = sys.env("AWS_ACCOUNT_ID")
   val queue = Uri.unsafeFromString(
     s"https://sqs.eu-west-1.amazonaws.com/$awsAccountId/test"
   )
-  val settings = SqsSettings(queue, AwsAuth(accessKey, secretKey, "eu-west-1"))
-  val consumerSettings = ConsumerSettings(
-    queue = settings.queue,
-    auth = settings.auth,
-    waitTimeSeconds = Some(1),
-    pollingRate = 2.seconds
-  )
-
-  def generate[T](implicit arb: Arbitrary[T]) = arb.arbitrary.sample.get
+  val region = "eu-west-1"
 
   case class TestMessage(string: String, int: Int, boolean: Boolean)
 
@@ -62,7 +53,7 @@ class ClientItSpec extends IOSpec {
         t.asJson.noSpaces
     }
 
-    implicit val arb: Arbitrary[TestMessage] = {
+    implicit val arbTestMessage: Arbitrary[TestMessage] = {
       val gen = for {
         str <- Gen.alphaNumStr
         int <- Gen.choose(Int.MinValue, Int.MaxValue)
@@ -72,7 +63,7 @@ class ClientItSpec extends IOSpec {
     }
 
     def arbStream(n: Long): Stream[IO, TestMessage] = {
-      val msg = generate[TestMessage]
+      val msg = arb[TestMessage]
       Stream
         .random[IO]
         .map(i => msg.copy(int = i))
@@ -94,32 +85,37 @@ class ClientItSpec extends IOSpec {
     val numOfMsgs = 22L
     val input = TestMessage.arbStream(numOfMsgs)
 
-    val outputF = clientResrc
-      .use { client =>
-        val producer = SqsProducer[TestMessage](client, settings)
-        val consumer = SqsConsumer[TestMessage](client, consumerSettings)
-        producer
-          .batchProduce(input, _.int.toString.pure[IO])
-          .compile
-          .drain
-          .flatMap(
-            _ => consumer.dequeueAsync(256).take(numOfMsgs).compile.drain
-          )
-      }
-    val o = outputF.unsafeRunSync()
-    o shouldBe a[Unit]
+    val result = for {
+      client <- Stream.resource(clientResrc)
+      cred <- Stream.resource(Credentials.chain[IO](client))
+      producer = SqsProducer[TestMessage](
+        client,
+        SqsConfig(queue, cred, region)
+      )
+      consumer = SqsConsumer[TestMessage](
+        client,
+        ConsumerConfig(
+          queue,
+          cred,
+          region,
+          waitTimeSeconds = Some(1),
+          pollingRate = 2.seconds
+        )
+      )
+      _ <- producer
+        .batchProduce(input, _.int.toString.pure[IO])
+      output <- consumer.dequeueAsync(256)
+    } yield output
+
+    result.take(
+      numOfMsgs
+    ).compile.toList.unsafeRunSync().size shouldBe numOfMsgs
   }
 
   it should "batch consume messages" in new Fixture {
     val numOfMsgs = 22L
     val input = TestMessage.arbStream(numOfMsgs).compile.toList.unsafeRunSync()
     val inputStream = Stream[IO, TestMessage](input: _*)
-    val consumerSettings = ConsumerSettings(
-      queue = settings.queue,
-      auth = settings.auth,
-      waitTimeSeconds = Some(1),
-      pollingRate = 2.seconds
-    )
 
     val ref = Resource.liftF(Ref.of[IO, List[TestMessage]](List.empty))
 
@@ -127,12 +123,23 @@ class ClientItSpec extends IOSpec {
       r <- ref
       interrupter <- Resource.liftF(SignallingRef[IO, Boolean](false))
       client <- clientResrc
-    } yield (r, interrupter, client)
+      cred <- Credentials.chain[IO](client)
+    } yield (r, interrupter, client, cred)
 
     val outputF = resources.use {
-      case (ref, interrupter, client) =>
-        val producer = SqsProducer[TestMessage](client, settings)
-        val consumer = SqsConsumer[TestMessage](client, consumerSettings)
+      case (ref, interrupter, client, cred) =>
+        val producer =
+          SqsProducer[TestMessage](client, SqsConfig(queue, cred, region))
+        val consumer = SqsConsumer[TestMessage](
+          client,
+          ConsumerConfig(
+            queue,
+            cred,
+            region,
+            waitTimeSeconds = Some(1),
+            pollingRate = 2.seconds
+          )
+        )
         producer
           .batchProduce(inputStream, _.int.toString.pure[IO])
           .compile
@@ -171,23 +178,31 @@ class ClientItSpec extends IOSpec {
     val numOfMsgs = 22L
     val input = TestMessage.arbStream(numOfMsgs).compile.toList.unsafeRunSync()
     val inputStream = Stream[IO, TestMessage](input: _*)
-    val consumerSettings = ConsumerSettings(
-      queue = settings.queue,
-      auth = settings.auth,
-      waitTimeSeconds = Some(1),
-      pollingRate = 2.seconds
-    )
 
-    val outputF = clientResrc
-      .use { client =>
-        val producer = SqsProducer[TestMessage](client, settings)
-        val consumer = SqsConsumer[TestMessage](client, consumerSettings)
-        inputStream
-          .mapAsync(256)(msg => producer.produce(msg))
-          .compile
-          .drain >> consumer.dequeueAsync(256).take(numOfMsgs).compile.toList
-      }
-    outputF.unsafeRunSync() should contain theSameElementsAs input
+    val consumed = for {
+      client <- Stream.resource(clientResrc)
+      cred <- Stream.resource(Credentials.chain[IO](client))
+      producer = SqsProducer[TestMessage](
+        client,
+        SqsConfig(queue, cred, region)
+      )
+      consumer = SqsConsumer[TestMessage](
+        client,
+        ConsumerConfig(
+          queue,
+          cred,
+          region,
+          waitTimeSeconds = Some(1),
+          pollingRate = 2.seconds
+        )
+      )
+      _ <- inputStream
+        .mapAsync(256)(msg => producer.produce(msg))
+      result <- consumer.dequeueAsync(256)
+    } yield result
+
+    consumed.take(
+      numOfMsgs
+    ).compile.toList.unsafeRunSync() should contain theSameElementsAs input
   }
-
 }
