@@ -25,7 +25,7 @@ lazy val dependencies = Seq(
 
 lazy val testDependencies = Seq(
   "org.http4s" %% "http4s-blaze-client" % http4sVersion,
-  "org.scalatest" %% "scalatest" % "3.2.0",
+  "org.scalatest" %% "scalatest" % "3.2.1",
   "ch.qos.logback" % "logback-classic" % logbackVersion,
   "ch.qos.logback" % "logback-core" % logbackVersion,
   "org.scalacheck" %% "scalacheck" % "1.14.3"
