@@ -13,7 +13,7 @@ import scala.xml.XML
 class DeleteMessageSpec extends IOSpec {
 
   val testCurrentMillis = 1586623258684L
-  val receiptHandle = "123456"
+  val receiptHandle = ReceiptHandle("123456")
   val accessKey = "ACCESS_KEY"
   val secretKey = "SECRET_KEY"
   val settings = SqsSettings(

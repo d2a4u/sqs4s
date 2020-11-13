@@ -22,9 +22,9 @@ case class ReceiveMessage[F[_]: Sync: Clock: Timer, T](
       "Action" -> "ReceiveMessage",
       "MaxNumberOfMessages" -> maxNumberOfMessages.toString,
       "VisibilityTimeout" -> visibilityTimeout.toString,
-      "AttributeName" -> "All",
-      "Version" -> "2012-11-05"
-    ) ++ waitTimeSeconds.toList.map(sec => "WaitTimeSeconds" -> sec.toString)
+      "AttributeName" -> "All"
+    ) ++ version ++ waitTimeSeconds.toList.map(sec =>
+      "WaitTimeSeconds" -> sec.toString)
 
     SignedRequest.post[F](
       params,
@@ -49,7 +49,14 @@ case class ReceiveMessage[F[_]: Sync: Clock: Timer, T](
           .guard[Option]
           .as {
             decoder.deserialize(raw).map { t =>
-              ReceiveMessage.Result(mid, handle, t, raw, md5Body, attributes)
+              ReceiveMessage.Result(
+                mid,
+                ReceiptHandle(handle),
+                t,
+                raw,
+                md5Body,
+                attributes
+              )
             }
           }
           .getOrElse {
@@ -64,10 +71,12 @@ case class ReceiveMessage[F[_]: Sync: Clock: Timer, T](
   }
 }
 
+case class ReceiptHandle(value: String) extends AnyVal
+
 object ReceiveMessage {
   case class Result[T](
     messageId: String,
-    receiptHandle: String,
+    receiptHandle: ReceiptHandle,
     body: T,
     rawBody: String,
     md5OfBody: String,

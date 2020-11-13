@@ -16,6 +16,8 @@ import scala.xml.{Elem, XML}
 
 abstract class Action[F[_]: Sync: Timer, T] {
 
+  val version = List("Version" -> "2012-11-05")
+
   @deprecated("use SqsConfig instead", "1.1.0")
   def runWith(client: Client[F], settings: SqsSettings): F[T] =
     mkRequest(settings)

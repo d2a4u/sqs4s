@@ -30,7 +30,10 @@ class DeleteMessageBatchItSpec extends IOSpec {
     } yield (client, cred)
     resources.use {
       case (client, cred) =>
-        DeleteMessageBatch[IO](Chunk(DeleteMessageBatch.Entry("1", "test")))
+        DeleteMessageBatch[IO](List(DeleteMessageBatch.Entry(
+          "1",
+          ReceiptHandle("test")
+        )))
           .runWith(
             client,
             SqsConfig(

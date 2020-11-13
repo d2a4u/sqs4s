@@ -51,10 +51,13 @@ class CanonicalRequestSpec extends IOSpec {
       uri = uri"/",
       headers = Headers.of(
         Header("Host", "example.amazonaws.com"),
-        Header("My-Header1", """value1
+        Header(
+          "My-Header1",
+          """value1
             |  value2
             |     value3
-          """.stripMargin),
+          """.stripMargin
+        ),
         Header(XAmzDate, testTimeStamp)
       )
     )

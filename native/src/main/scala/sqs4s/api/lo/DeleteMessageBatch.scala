@@ -2,7 +2,6 @@ package sqs4s.api.lo
 
 import cats.effect.{Clock, Sync, Timer}
 import cats.implicits._
-import fs2.Chunk
 import org.http4s.Request
 import sqs4s.api.SqsConfig
 import sqs4s.api.errors.UnexpectedResponseError
@@ -10,12 +9,12 @@ import sqs4s.api.errors.UnexpectedResponseError
 import scala.xml.Elem
 
 case class DeleteMessageBatch[F[_]: Sync: Clock: Timer](
-  entries: Chunk[DeleteMessageBatch.Entry]
+  entries: Seq[DeleteMessageBatch.Entry]
 ) extends Action[F, DeleteMessageBatch.Result] {
 
   private val receiptHandles = entries
     .map { entry =>
-      List("Id" -> entry.id, "ReceiptHandle" -> entry.receiptHandle)
+      List("Id" -> entry.id, "ReceiptHandle" -> entry.receiptHandle.value)
     }
     .zipWithIndex
     .toList
@@ -30,9 +29,8 @@ case class DeleteMessageBatch[F[_]: Sync: Clock: Timer](
   def mkRequest(config: SqsConfig[F]): F[Request[F]] = {
     val params =
       List(
-        "Action" -> "DeleteMessageBatch",
-        "Version" -> "2012-11-05"
-      ) ++ receiptHandles
+        "Action" -> "DeleteMessageBatch"
+      ) ++ version ++ receiptHandles
 
     SignedRequest.post[F](
       params,
@@ -85,7 +83,7 @@ case class DeleteMessageBatch[F[_]: Sync: Clock: Timer](
 }
 
 object DeleteMessageBatch {
-  case class Entry(id: String, receiptHandle: String)
+  case class Entry(id: String, receiptHandle: ReceiptHandle)
 
   case class Result(
     requestId: String,
