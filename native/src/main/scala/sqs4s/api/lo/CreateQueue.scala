@@ -29,9 +29,8 @@ case class CreateQueue[F[_]: Sync: Clock: Timer](
 
     val queries = List(
       "Action" -> "CreateQueue",
-      "QueueName" -> name,
-      "Version" -> "2012-11-05"
-    )
+      "QueueName" -> name
+    ) ++ version
 
     val params =
       attributes.zipWithIndex

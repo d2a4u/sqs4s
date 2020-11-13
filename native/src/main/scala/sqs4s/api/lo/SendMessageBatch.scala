@@ -81,7 +81,7 @@ case class SendMessageBatch[F[_]: Sync: Clock: Timer, T](
 
   def mkRequest(config: SqsConfig[F]): F[Request[F]] = {
     val params =
-      List("Action" -> "SendMessageBatch", "Version" -> "2012-11-05") ++ entries
+      List("Action" -> "SendMessageBatch") ++ version ++ entries
 
     SignedRequest.post[F](
       params,

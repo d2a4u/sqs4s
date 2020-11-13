@@ -7,7 +7,6 @@ import org.http4s.implicits._
 import sqs4s.IOSpec
 import sqs4s.api.errors.UnexpectedResponseError
 import sqs4s.api.{AwsAuth, SqsSettings}
-import sqs4s.serialization.instances._
 
 import scala.concurrent.duration._
 import scala.xml.XML
@@ -23,9 +22,9 @@ class DeleteMessageBatchSpec extends IOSpec {
     AwsAuth(accessKey, secretKey, "eu-west-1")
   )
   val attr = Map("foo" -> "1", "bar" -> "2")
-  val batch = Chunk(
-    DeleteMessageBatch.Entry("1", "test1"),
-    DeleteMessageBatch.Entry("2", "test2")
+  val batch = List(
+    DeleteMessageBatch.Entry("1", ReceiptHandle("test1")),
+    DeleteMessageBatch.Entry("2", ReceiptHandle("test2"))
   )
 
   override implicit lazy val testClock: Clock[IO] = new Clock[IO] {

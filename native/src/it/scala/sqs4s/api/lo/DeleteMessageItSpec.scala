@@ -13,7 +13,7 @@ import scala.concurrent.duration.TimeUnit
 class DeleteMessageItSpec extends IOSpec {
 
   val testCurrentMillis = 1586623258684L
-  val receiptHandle = "123456"
+  val receiptHandle = ReceiptHandle("123456")
 
   override implicit lazy val testClock: Clock[IO] = new Clock[IO] {
     def realTime(unit: TimeUnit): IO[Long] = IO.pure(testCurrentMillis)

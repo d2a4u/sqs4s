@@ -23,9 +23,8 @@ case class SendMessage[F[_]: Sync: Clock: Timer, T](
     val params = {
       val queries = List(
         "Action" -> "SendMessage",
-        "MessageBody" -> serializer.serialize(message),
-        "Version" -> "2012-11-05"
-      ) ++ (
+        "MessageBody" -> serializer.serialize(message)
+      ) ++ version ++ (
         dedupId.map(ddid => List("MessageDeduplicationId" -> ddid)) |+|
           groupId.map(gid => List("MessageGroupId" -> gid)) |+|
           delay.map(d => List("DelaySeconds" -> d.toSeconds.toString))
