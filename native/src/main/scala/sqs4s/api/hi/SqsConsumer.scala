@@ -189,8 +189,9 @@ object SqsConsumer {
                 groupWithin
               ).map {
                 entries =>
-                  val dedup = entries.toList.distinctBy(_.id)
-                  retry(DeleteMessageBatch[F](dedup).runWith(
+                  val unique =
+                    dedup[DeleteMessageBatch.Entry, String](entries, _.id)
+                  retry(DeleteMessageBatch[F](unique).runWith(
                     client,
                     config
                   ))
@@ -232,8 +233,10 @@ object SqsConsumer {
               val records = chunk.map(res => (res.messageId, res.body)).toList
               val entries = chunk.map { result =>
                 DeleteMessageBatch.Entry(result.messageId, result.receiptHandle)
-              }.toList.distinctBy(_.id)
-              DeleteMessageBatch(entries).runWith(client, config).map {
+              }
+              val unique =
+                dedup[DeleteMessageBatch.Entry, String](entries, _.id)
+              DeleteMessageBatch(unique).runWith(client, config).map {
                 deleted =>
                   val ids = deleted.successes.map(_.id)
                   Chunk.seq(records.collect {
@@ -302,8 +305,8 @@ object SqsConsumer {
           groupWithin: FiniteDuration = 500.millis
         ): Pipe[F, DeleteMessageBatch.Entry, Unit] =
           _.groupWithin(MaxBatchSize, groupWithin).map { entries =>
-            val dedup = entries.toList.distinctBy(_.id)
-            retry(DeleteMessageBatch[F](dedup).runWith(
+            val unique = dedup[DeleteMessageBatch.Entry, String](entries, _.id)
+            retry(DeleteMessageBatch[F](unique).runWith(
               client,
               config
             ))
@@ -330,6 +333,9 @@ object SqsConsumer {
                 case _: RetriableServerError => true
               }
             )
+
+        private def dedup[V, U](entries: Chunk[V], id: V => U): Seq[V] =
+          entries.toList.map(t => id(t) -> t).toMap.values.toSeq
       }
   }
 }
