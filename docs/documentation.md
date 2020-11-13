@@ -49,37 +49,67 @@ Where `F` is `F[_]: MonadError[?[_], Throwable]` to encapsulate error.
 
 #### High Level
 
+*NOTE:* All `xxxAsync` APIs are not suitable for FIFO queue because internally, 
+the client pulls multiple messages from SQS in parallel, hence, the ordering might
+be lost.
+
 ##### produce 
 
 Produce a message to SQS
 
 ##### batchProduce
 
-Produce messages to SQS in batch operation
+Produce messages to SQS in batch
 
 ##### consume
 
-Consume messages from SQS as a fs2 Stream, only acknowledge the message only 
-when it has been processed
+Read messages from SQS queue as T, for each message, apply process `process` 
+function and automatically acknowledge the message on completion of `process`.
+
+Suitable for FIFO and non-FIFO queue. The message is acknowledged one by one 
+instead of batching.
 
 ##### consumeAsync
 
-Consume messages but making multiple calls to SQS in parallel
+Parallel read messages from SQS queue as a Stream of T, for each message,
+apply process `process` function and automatically acknowledge the
+messages in batch.
 
 ##### dequeue
  
-Get messages from SQS as a fs2 Stream but acknowledge right away
+Read messages from SQS queue as a Stream of T, automatically acknowledge
+messages **before** pushing T down the Stream.
+
+Suitable for FIFO and non-FIFO queue. The message is acknowledged one by
+one instead of batching.
 
 ##### dequeueAsync
 
-Get messages but making multiple calls to SQS in parallel. This takes a `process`
-function of `T => F[Unit]` to represent processing a message in a queue. Please 
-note that this does not work for FIFO queue because internally, the client pulls
-multiple messages from SQS in parallel, run the `process` process function on 
-each message and finally, acknowledge messages in batch.
+Parallel read messages from SQS queue as a Stream of T, automatically
+acknowledge messages BEFORE pushing T into the Stream.
 
 ##### peek
 
-Peek for X number of messages in SQS without acknowledging them, as a result,
-the messages stay in the queue.
+Read N messages from the queue without acknowledge them.
 
+##### read
+
+Similar to `peek` but return also a ReceiptHandle to manually acknowledge
+messages and return up to `maxRead` number of messages.
+
+##### reads
+
+Similar to `read` but return a Stream of `ReceiveMessage.Result[T]` which
+can be used to manually acknowledge messages.
+
+##### readsAsync
+
+Similar to `reads` but read messages in parallel.
+
+##### ack 
+
+Acknowledge that a message has been read one by one.
+
+##### batchAck
+
+Batch acknowledge that messages has been read.
