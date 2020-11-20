@@ -335,7 +335,9 @@ object SqsConsumer {
             )
 
         private def dedup[V, U](entries: Chunk[V], id: V => U): Seq[V] =
-          entries.toList.map(t => id(t) -> t).toMap.values.toSeq
+          entries.foldLeft(Map.empty[U, V]) { (acc, item) =>
+            acc + (id(item) -> item)
+          }.values.toSeq
       }
   }
 }
