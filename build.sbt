@@ -20,7 +20,7 @@ lazy val dependencies = Seq(
   "io.chrisdavenport" %% "log4cats-slf4j" % "1.1.1",
   "co.fs2" %% "fs2-core" % fs2Version,
   "javax.xml.bind" % "jaxb-api" % "2.4.0-b180830.0359",
-  "org.scala-lang.modules" %% "scala-collection-compat" % "2.1.6"
+  "org.scala-lang.modules" %% "scala-collection-compat" % "2.3.0"
 )
 
 lazy val testDependencies = Seq(
