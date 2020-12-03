@@ -1,33 +1,21 @@
 package sqs4s.api.hi
 
-import java.time.Instant
-import java.util.UUID
-import java.util.concurrent.TimeUnit
-
 import cats.effect.concurrent.Ref
 import cats.effect.{Clock, IO, Resource}
 import cats.implicits._
 import fs2.Stream
 import fs2.concurrent.SignallingRef
 import org.http4s.Uri
-import org.http4s.client.Client
 import org.http4s.client.blaze.BlazeClientBuilder
 import sqs4s.IOSpec
-import sqs4s.api.lo.{CreateQueue, DeleteMessageBatch, DeleteQueue}
+import sqs4s.api.lo.DeleteMessageBatch
 import sqs4s.api.{SqsConfig, _}
 import sqs4s.auth.Credentials
 
 import scala.concurrent.duration._
 
 class ClientItSpec extends IOSpec {
-  override implicit lazy val testClock: Clock[IO] = new Clock[IO] {
-    def realTime(unit: TimeUnit): IO[Long] =
-      IO.delay {
-        Instant.now().toEpochMilli
-      }
-
-    def monotonic(unit: TimeUnit): IO[Long] = IO(0L)
-  }
+  override implicit lazy val testClock: Clock[IO] = timer.clock
 
   val awsAccountId = sys.env("AWS_ACCOUNT_ID")
   val sqsRootEndpoint =
@@ -39,45 +27,30 @@ class ClientItSpec extends IOSpec {
   val clientResource = BlazeClientBuilder[IO](ec)
     .withMaxTotalConnections(256)
     .withMaxWaitQueueLimit(2048)
-    .withMaxConnectionsPerRequestKey(Function.const(2048))
+    .withMaxConnectionsPerRequestKey(_ => 2048)
     .resource
-
-  def queueResource(
-    client: Client[IO],
-    cred: Credentials[IO]
-  ): Resource[IO, CreateQueue.Result] = {
-    val config = SqsConfig(sqsRootEndpoint, cred, region)
-    Resource.make {
-      IO.delay("test-" + UUID.randomUUID()).flatMap { name =>
-        CreateQueue[IO](name, sqsRootEndpoint).runWith(client, config)
-      }
-    } { queue =>
-      DeleteQueue[IO](Uri.unsafeFromString(queue.queueUrl)).runWith(
-        client,
-        config
-      ).void
-    }
-  }
 
   val producerConsumerResource =
     for {
       client <- clientResource
       cred <- Credentials.chain(client)
-      consumerProducer <- queueResource(client, cred).map { queue =>
-        val uri = Uri.unsafeFromString(queue.queueUrl)
-        val conf = SqsConfig(uri, cred, region)
-        val producer = SqsProducer[TestMessage](client, conf)
-        val consumer = SqsConsumer[TestMessage](
-          client,
-          ConsumerConfig(
-            conf.queue,
-            conf.credentials,
-            conf.region,
-            waitTimeSeconds = Some(1),
-            pollingRate = 2.seconds
+      rootConfig = SqsConfig(sqsRootEndpoint, cred, region)
+      consumerProducer <- TestUtil.queueResource[IO](client, rootConfig).map {
+        queue =>
+          val uri = Uri.unsafeFromString(queue.queueUrl)
+          val conf = SqsConfig(uri, cred, region)
+          val producer = SqsProducer[TestMessage](client, conf)
+          val consumer = SqsConsumer[TestMessage](
+            client,
+            ConsumerConfig(
+              conf.queue,
+              conf.credentials,
+              conf.region,
+              waitTimeSeconds = Some(1),
+              pollingRate = 2.seconds
+            )
           )
-        )
-        (producer, consumer)
+          (producer, consumer)
       }
     } yield consumerProducer
 

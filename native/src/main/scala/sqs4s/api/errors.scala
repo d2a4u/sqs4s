@@ -8,6 +8,8 @@ import sqs4s.api.lo.DeleteMessageBatch
 import scala.xml.Elem
 
 object errors {
+  private val ExpiredTokenCode = "ExpiredToken"
+
   sealed trait SqsError extends Exception
 
   case class RetriableServerError(raw: String) extends SqsError
@@ -47,6 +49,11 @@ object errors {
     errors: NonEmptyList[DeleteMessageBatch.Error]
   ) extends SqsError
 
+  case class ExpiredTokenError(message: String, requestId: String)
+      extends SqsError {
+    override def getMessage: String = message
+  }
+
   object SqsError {
     implicit val show: Show[SqsError] = Show.show[SqsError](_.getMessage)
 
@@ -56,8 +63,14 @@ object errors {
         (xml \\ "Code").headOption.map(_.text),
         (xml \\ "Message").headOption.map(_.text),
         (xml \\ "RequestId").headOption.map(_.text)
-      ).mapN((typ, code, msg, id) => AwsSqsError(typ, code, msg, id))
-        .getOrElse(BasicAwsSqsError(xml))
+      ).mapN { (typ, code, msg, id) =>
+        code match {
+          case ExpiredTokenCode =>
+            ExpiredTokenError(msg, id)
+          case _ =>
+            AwsSqsError(typ, code, msg, id)
+        }
+      }.getOrElse(BasicAwsSqsError(xml))
     }
   }
 }
