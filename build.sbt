@@ -44,7 +44,7 @@ lazy val commonSettings = Seq(
   releaseCrossBuild := true,
   bintrayReleaseOnPublish := false,
   addCompilerPlugin(
-    "org.typelevel" % "kind-projector" % "0.11.0" cross CrossVersion.full
+    "org.typelevel" % "kind-projector" % "0.11.3" cross CrossVersion.full
   )
 )
 
