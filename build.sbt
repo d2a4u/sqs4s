@@ -17,7 +17,7 @@ lazy val dependencies = Seq(
   "org.http4s" %% "http4s-scala-xml" % http4sVersion,
   "org.http4s" %% "http4s-circe" % http4sVersion,
   "org.scala-lang.modules" %% "scala-parser-combinators" % "1.1.2",
-  "io.chrisdavenport" %% "log4cats-slf4j" % "1.1.1",
+  "org.typelevel" %% "log4cats-slf4j" % "1.2.0",
   "co.fs2" %% "fs2-core" % fs2Version,
   "javax.xml.bind" % "jaxb-api" % "2.4.0-b180830.0359",
   "org.scala-lang.modules" %% "scala-collection-compat" % "2.4.2"
