@@ -8,7 +8,7 @@ import java.time._
 import java.util.concurrent.TimeUnit
 
 import cats.effect.{Clock, Sync}
-import cats.implicits._
+import cats.syntax.all._
 import fs2._
 import javax.crypto.Mac
 import javax.crypto.spec.SecretKeySpec

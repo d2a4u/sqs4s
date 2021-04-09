@@ -4,22 +4,19 @@ import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
 import java.time._
 
-import cats.effect.{Clock, Sync}
-import cats.implicits._
-import io.chrisdavenport.log4cats.Logger
-import io.chrisdavenport.log4cats.slf4j.Slf4jLogger
+import cats.effect.Sync
+import cats.syntax.all._
 import org.http4s.Credentials.Token
 import org.http4s.headers.Authorization
 import org.http4s.util.CaseInsensitiveString
 import org.http4s.{Headers, Method, Query, Request, Uri}
+import org.typelevel.log4cats.Logger
 import sqs4s.internal.aws4.common._
 
 import scala.collection.compat._
 import scala.language.postfixOps
 
 private[sqs4s] object models {
-  implicit def unsafeLogger[F[_]: Sync] = Slf4jLogger.getLogger[F]
-
   final case class CQuery(query: Query) {
     private def urlEncode[F[_]: Sync](str: String): F[String] =
       Sync[F].delay {
@@ -69,9 +66,7 @@ private[sqs4s] object models {
         }
 
       val duplicationGuarded: List[(String, String)] => Map[String, String] =
-        _.groupBy { case (key, _) => key }.view.mapValues(_.map {
-          case (_, value) => value
-        }.mkString(",")).toMap
+        _.groupMap(_._1)(_._2).view.mapValues(_.mkString(",")).toMap
 
       val multiLineGuarded: Map[String, String] => Map[String, String] =
         _.view.mapValues(_.replaceAll("\n +", ",").trim).toMap
@@ -105,7 +100,7 @@ private[sqs4s] object models {
         .mkString(";")
   }
 
-  final case class CReq[F[_]: Sync: Clock](request: Request[F]) {
+  final case class CReq[F[_]: Sync](request: Request[F]) {
     lazy val uri: Uri = request.uri
     lazy val method: Method = request.method
     lazy val path: String = uri.path
@@ -128,7 +123,8 @@ private[sqs4s] object models {
       secretKey: String,
       region: String,
       service: String,
-      timestamp: LocalDateTime
+      timestamp: LocalDateTime,
+      logger: Logger[F]
     ): F[String] =
       for {
         canonicalReq <- value
@@ -136,8 +132,8 @@ private[sqs4s] object models {
         sts <- stringToSign[F](region, service, canonicalReq, timestamp)
         sha <- hmacSha256[F](key, sts)
         signed <- hexDigest(sha)
-        _ <- Logger[F].debug("Canonical request:\n" + canonicalReq)
-        _ <- Logger[F].debug("String to sign:\n" + sts)
+        _ <- logger.debug("Canonical request:\n" + canonicalReq)
+        _ <- logger.debug("String to sign:\n" + sts)
       } yield signed
 
     def toAuthorizedRequest(
@@ -145,14 +141,15 @@ private[sqs4s] object models {
       secretKey: String,
       region: String,
       service: String,
-      currentMillis: Long
+      currentMillis: Long,
+      logger: Logger[F]
     ): F[Request[F]] =
       for {
         ts <- Sync[F].delay {
           val now = Instant.ofEpochMilli(currentMillis)
           LocalDateTime.ofInstant(now, ZoneOffset.UTC)
         }
-        sig <- sign(secretKey, region, service, ts)
+        sig <- sign(secretKey, region, service, ts, logger)
         tk <-
           token(sig, signedHeaders, ts.toLocalDate, accessKey, region, service)
       } yield request.putHeaders(Authorization(tk))

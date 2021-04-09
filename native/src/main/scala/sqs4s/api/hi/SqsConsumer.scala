@@ -1,15 +1,15 @@
-package sqs4s.api.hi
+package sqs4s.api
+package hi
 
 import cats.Parallel
 import cats.data.NonEmptyList
 import cats.effect.{Clock, Concurrent, Timer}
-import cats.implicits._
+import cats.syntax.all._
 import fs2._
 import org.http4s.client.Client
+import org.typelevel.log4cats.Logger
 import sqs4s.api.errors.{DeleteMessageBatchErrors, RetriableServerError}
 import sqs4s.api.lo._
-import sqs4s.api.{ConsumerConfig, ConsumerSettings, SqsConfig}
-import sqs4s.auth.Credentials
 import sqs4s.serialization.SqsDeserializer
 
 import scala.concurrent.TimeoutException
@@ -112,39 +112,13 @@ object SqsConsumer {
   private[hi] final class ApplyPartiallyApplied[T] private[SqsConsumer] (
     private val dummy: Boolean
   ) extends AnyVal {
-
-    @deprecated("use ConsumerConfig instead", "1.1.0")
     def apply[F[_]: Concurrent: Parallel: Clock: Timer: SqsDeserializer[
       *[_],
       T
     ]](
       client: Client[F],
-      consumerSettings: ConsumerSettings
-    ): SqsConsumer[F, T] =
-      apply[F](
-        client,
-        ConsumerConfig(
-          consumerSettings.queue,
-          Credentials.basic[F](
-            consumerSettings.auth.accessKey,
-            consumerSettings.auth.secretKey
-          ),
-          consumerSettings.auth.region,
-          consumerSettings.maxRead,
-          consumerSettings.visibilityTimeout,
-          consumerSettings.waitTimeSeconds,
-          consumerSettings.pollingRate,
-          consumerSettings.initialDelay,
-          consumerSettings.maxRetry
-        )
-      )
-
-    def apply[F[_]: Concurrent: Parallel: Clock: Timer: SqsDeserializer[
-      *[_],
-      T
-    ]](
-      client: Client[F],
-      consumerConfig: ConsumerConfig[F]
+      consumerConfig: ConsumerConfig[F],
+      logger: Logger[F]
     ): SqsConsumer[F, T] =
       new SqsConsumer[F, T] {
         private val config =
@@ -160,7 +134,8 @@ object SqsConsumer {
               Stream.eval(process(entry.body)).flatMap { _ =>
                 retry(DeleteMessage[F](entry.receiptHandle).runWith(
                   client,
-                  config
+                  config,
+                  logger
                 ).void)
               }
             }
@@ -193,7 +168,8 @@ object SqsConsumer {
                     dedup[DeleteMessageBatch.Entry, String](entries, _.id)
                   retry(DeleteMessageBatch[F](unique).runWith(
                     client,
-                    config
+                    config,
+                    logger
                   ))
                     .evalMap { result =>
                       result.errors match {
@@ -217,7 +193,8 @@ object SqsConsumer {
             _.flatMap { entry =>
               retry(DeleteMessage[F](entry.receiptHandle).runWith(
                 client,
-                config
+                config,
+                logger
               ).as(entry.body))
             }
           reads
@@ -236,7 +213,7 @@ object SqsConsumer {
               }
               val unique =
                 dedup[DeleteMessageBatch.Entry, String](entries, _.id)
-              DeleteMessageBatch(unique).runWith(client, config).map {
+              DeleteMessageBatch(unique).runWith(client, config, logger).map {
                 deleted =>
                   val ids = deleted.successes.map(_.id)
                   Chunk.seq(records.collect {
@@ -264,7 +241,7 @@ object SqsConsumer {
             consumerConfig.maxRead,
             consumerConfig.visibilityTimeout,
             consumerConfig.waitTimeSeconds
-          ).runWith(client, config)
+          ).runWith(client, config, logger)
 
         override def reads: Stream[F, ReceiveMessage.Result[T]] =
           Stream
@@ -276,7 +253,7 @@ object SqsConsumer {
               )
             )
             .metered(consumerConfig.pollingRate)
-            .evalMap(_.runWith(client, config))
+            .evalMap(_.runWith(client, config, logger))
             .filter(_.nonEmpty)
             .flatMap(Stream.chunk)
 
@@ -291,13 +268,13 @@ object SqsConsumer {
               )
             )
             .metered(consumerConfig.pollingRate)
-            .mapAsync(maxConcurrent)(_.runWith(client, config))
+            .mapAsync(maxConcurrent)(_.runWith(client, config, logger))
             .filter(_.nonEmpty)
             .flatMap(Stream.chunk)
 
         override def ack: Pipe[F, ReceiptHandle, Unit] =
           _.evalMap { handle =>
-            DeleteMessage[F](handle).runWith(client, config).void
+            DeleteMessage[F](handle).runWith(client, config, logger).void
           }
 
         override def batchAck(
@@ -308,7 +285,8 @@ object SqsConsumer {
             val unique = dedup[DeleteMessageBatch.Entry, String](entries, _.id)
             retry(DeleteMessageBatch[F](unique).runWith(
               client,
-              config
+              config,
+              logger
             ))
               .evalMap { result =>
                 result.errors match {
@@ -331,6 +309,7 @@ object SqsConsumer {
               {
                 case _: TimeoutException => true
                 case _: RetriableServerError => true
+                case _ => false
               }
             )
 

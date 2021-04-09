@@ -1,18 +1,19 @@
 package sqs4s.api.lo
 
 import cats.effect.{Clock, Sync, Timer}
-import cats.implicits._
+import cats.syntax.all._
 import org.http4s.{Request, Uri}
+import org.typelevel.log4cats.Logger
 import sqs4s.api.SqsConfig
 import sqs4s.api.errors.UnexpectedResponseError
 
 import scala.xml.Elem
 
-case class DeleteQueue[F[_]: Sync: Clock: Timer](
+final case class DeleteQueue[F[_]: Sync: Clock: Timer](
   sqsEndpoint: Uri
 ) extends Action[F, DeleteQueue.Result] {
 
-  def mkRequest(config: SqsConfig[F]): F[Request[F]] = {
+  def mkRequest(config: SqsConfig[F], logger: Logger[F]): F[Request[F]] = {
     val param = List(
       "Action" -> "DeleteQueue"
     ) ++ version
@@ -22,7 +23,7 @@ case class DeleteQueue[F[_]: Sync: Clock: Timer](
       sqsEndpoint,
       config.credentials,
       config.region
-    ).render
+    ).render(logger)
   }
 
   def parseResponse(response: Elem): F[DeleteQueue.Result] = {
@@ -39,5 +40,5 @@ case class DeleteQueue[F[_]: Sync: Clock: Timer](
 }
 
 object DeleteQueue {
-  case class Result(requestId: String)
+  final case class Result(requestId: String)
 }

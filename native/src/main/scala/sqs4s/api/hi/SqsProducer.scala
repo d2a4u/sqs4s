@@ -1,14 +1,14 @@
-package sqs4s.api.hi
+package sqs4s.api
+package hi
 
 import cats.MonadError
 import cats.effect.{Clock, Concurrent, Timer}
-import cats.implicits._
+import cats.syntax.all._
 import fs2.Stream
 import org.http4s.client.Client
+import org.typelevel.log4cats.Logger
 import sqs4s.api.errors.MessageTooLarge
 import sqs4s.api.lo.{SendMessage, SendMessageBatch}
-import sqs4s.api.{SqsConfig, SqsSettings}
-import sqs4s.auth.Credentials
 import sqs4s.serialization.SqsSerializer
 
 import scala.concurrent.duration._
@@ -41,32 +41,10 @@ object SqsProducer {
   private[hi] final class ApplyPartiallyApplied[T] private[SqsProducer] (
     private val dummy: Boolean
   ) extends AnyVal {
-
-    @deprecated("use SqsConfig instead", "1.1.0")
     def apply[F[_]](
       client: Client[F],
-      settings: SqsSettings
-    )(
-      implicit serializer: SqsSerializer[T],
-      ev1: Concurrent[F],
-      ev2: Timer[F],
-      ev3: Clock[F]
-    ): SqsProducer[F, T] =
-      apply[F](
-        client,
-        SqsConfig[F](
-          settings.queue,
-          Credentials.basic[F](
-            settings.auth.accessKey,
-            settings.auth.secretKey
-          ),
-          settings.auth.region
-        )
-      )
-
-    def apply[F[_]](
-      client: Client[F],
-      config: SqsConfig[F]
+      config: SqsConfig[F],
+      logger: Logger[F]
     )(
       implicit serializer: SqsSerializer[T],
       ev1: Concurrent[F],
@@ -82,7 +60,7 @@ object SqsProducer {
           groupId: Option[String] = None
         ): F[SendMessage.Result] =
           SendMessage[F, T](t, attributes, delay, dedupId, groupId)
-            .runWith(client, config)
+            .runWith(client, config, logger)
 
         override def batchProduce(
           messages: Stream[F, T],
@@ -108,7 +86,7 @@ object SqsProducer {
                         .Entry(i, t, attributes, delay, dedupId, groupId)
                     }
                   }
-                  .flatMap(SendMessageBatch(_).runWith(client, config))
+                  .flatMap(SendMessageBatch(_).runWith(client, config, logger))
               } else {
                 MonadError[F, Throwable]
                   .raiseError[SendMessageBatch.Result](MessageTooLarge)
