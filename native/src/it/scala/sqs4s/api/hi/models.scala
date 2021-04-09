@@ -14,15 +14,13 @@ object TestMessage {
   implicit val encode: Encoder[TestMessage] = deriveEncoder
   implicit val decode: Decoder[TestMessage] = deriveDecoder
 
-  implicit val desrlz = new SqsDeserializer[IO, TestMessage] {
-    override def deserialize(u: String): IO[TestMessage] =
+  implicit val desrlz =
+    SqsDeserializer.instance { u =>
       IO.fromEither(parser.decode[TestMessage](u))
-  }
+    }
 
-  implicit val srlz = new SqsSerializer[TestMessage] {
-    override def serialize(t: TestMessage): String =
-      t.asJson.noSpaces
-  }
+  implicit val srlz =
+    SqsSerializer.instance[TestMessage](_.asJson.noSpaces)
 
   implicit val arbTestMessage: Arbitrary[TestMessage] = {
     val gen = for {
