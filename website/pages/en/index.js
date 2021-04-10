@@ -83,7 +83,7 @@ class Index extends React.Component {
         style={{textAlign: 'center'}}>
         <MarkdownBlock>
         [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-        [![Build Status](https://travis-ci.com/d2a4u/sqs4s.svg?branch=master)](https://travis-ci.com/d2a4u/sqs4s)
+        [![build](https://github.com/d2a4u/sqs4s/actions/workflows/build-main.yml/badge.svg?branch=master)](https://github.com/d2a4u/sqs4s/actions/workflows/build-main.yml)
         [![Codacy Badge](https://api.codacy.com/project/badge/Grade/8a331de033cb4700acddb175af4148bb)](https://www.codacy.com/app/d2a4u/sqs4s?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=d2a4u/sqs4s&amp;utm_campaign=Badge_Grade)
         [![Download](https://api.bintray.com/packages/d2a4u/sqs4s/sqs4s-native/images/download.svg)](https://bintray.com/d2a4u/sqs4s/sqs4s-native/_latestVersion)
         [![Join the chat at https://gitter.im/sqs4s/community](https://badges.gitter.im/sqs4s/community.svg)](https://gitter.im/sqs4s/community?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
