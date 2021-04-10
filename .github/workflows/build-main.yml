@@ -1,0 +1,38 @@
+name: build-main
+
+on:
+  push:
+    branches:
+      - 'master'
+    paths-ignore:
+      - '**.md'
+      - 'website/**'
+
+jobs:
+  build-tests:
+    runs-on: ubuntu-20.04
+    steps:
+      - uses: actions/checkout@v2
+      - name: Setup Scala
+        uses: olafurpg/setup-scala@v10
+        with:
+          java-version: adopt@1.11
+      - name: Gen cache keys
+        run: |
+          md5sum project/build.properties project/plugins.sbt build.sbt > $GITHUB_WORKSPACE/.sbt_cache_key
+          cat $GITHUB_WORKSPACE/.sbt_cache_key
+      - name: Check cache
+        uses: actions/cache@v2.1.1
+        with:
+          key: sbt-${{ hashFiles('**/.sbt_cache_key') }}
+          path: |
+            ~/.ivy2
+            ~/.sbt
+            ~/.cache/coursier
+      - name: Run build and tests
+        run:
+          sbt -v -Dfile.encoding=UTF-8 ";+native/test;+native/it:test"
+        env:
+          AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_KEY: ${{ secrets.AWS_SECRET_KEY }}
