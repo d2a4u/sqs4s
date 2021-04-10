@@ -25,7 +25,8 @@ final case class ReceiveMessage[F[_]: Sync: Clock: Timer, T](
       "VisibilityTimeout" -> visibilityTimeout.toString,
       "AttributeName" -> "All"
     ) ++ version ++ waitTimeSeconds.toList.map(sec =>
-      "WaitTimeSeconds" -> sec.toString)
+      "WaitTimeSeconds" -> sec.toString
+    )
 
     SignedRequest.post[F](
       params,

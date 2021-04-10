@@ -17,8 +17,7 @@ import scala.concurrent.duration._
 
 trait SqsConsumer[F[_], T] {
 
-  /**
-    * Read messages from SQS queue as T, for each message, apply process
+  /** Read messages from SQS queue as T, for each message, apply process
     * `process` function and automatically acknowledge the message on completion
     * of `process`.
     *
@@ -27,8 +26,7 @@ trait SqsConsumer[F[_], T] {
     */
   def consume(process: T => F[Unit]): F[Unit]
 
-  /**
-    * Parallel read messages from SQS queue as a Stream of T, for each message,
+  /** Parallel read messages from SQS queue as a Stream of T, for each message,
     * apply process `process` function and automatically acknowledge the
     * messages in batch.
     *
@@ -42,8 +40,7 @@ trait SqsConsumer[F[_], T] {
     process: T => F[Unit]
   ): Stream[F, Unit]
 
-  /**
-    * Read messages from SQS queue as a Stream of T, automatically acknowledge
+  /** Read messages from SQS queue as a Stream of T, automatically acknowledge
     * messages BEFORE pushing T into the Stream.
     *
     * Suitable for FIFO and non-FIFO queue. The message is acknowledged one by
@@ -51,8 +48,7 @@ trait SqsConsumer[F[_], T] {
     */
   def dequeue: Stream[F, T]
 
-  /**
-    * Parallel read messages from SQS queue as a Stream of T, automatically
+  /** Parallel read messages from SQS queue as a Stream of T, automatically
     * acknowledge messages BEFORE pushing T into the Stream.
     *
     * NOTE: This is not suitable for FIFO queue because it reads messages in
@@ -63,38 +59,32 @@ trait SqsConsumer[F[_], T] {
     groupWithin: FiniteDuration = 500.millis
   ): Stream[F, T]
 
-  /**
-    * Read N messages from the queue without acknowledge them.
+  /** Read N messages from the queue without acknowledge them.
     */
   def peek(number: Int): Stream[F, T]
 
-  /**
-    * Similar to `peek` but return also a ReceiptHandle to manually acknowledge
+  /** Similar to `peek` but return also a ReceiptHandle to manually acknowledge
     * messages and return up to `maxRead` number of messages.
     */
   def read: F[Chunk[ReceiveMessage.Result[T]]]
 
-  /**
-    * Similar to `read` but return a Stream of `ReceiveMessage.Result[T]` which
+  /** Similar to `read` but return a Stream of `ReceiveMessage.Result[T]` which
     * can be used to manually acknowledge messages.
     */
   def reads: Stream[F, ReceiveMessage.Result[T]]
 
-  /**
-    * Similar to `reads` but read messages in parallel.
+  /** Similar to `reads` but read messages in parallel.
     *
     * NOTE: This is not suitable for FIFO queue because it reads messages in
     * parallel so the order is lost.
     */
   def readsAsync(maxConcurrent: Int): Stream[F, ReceiveMessage.Result[T]]
 
-  /**
-    * Acknowledge that a message has been read.
+  /** Acknowledge that a message has been read.
     */
   def ack: Pipe[F, ReceiptHandle, Unit]
 
-  /**
-    * Batch acknowledge that messages has been read.
+  /** Batch acknowledge that messages has been read.
     */
   def batchAck(
     maxConcurrent: Int,

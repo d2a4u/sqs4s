@@ -9,7 +9,6 @@ val http4sVersion = "0.21.22"
 val log4catsVersion = "1.2.2"
 val logbackVersion = "1.2.3"
 
-
 lazy val dependencies = Seq(
   "io.circe" %% "circe-core" % circeVersion,
   "org.http4s" %% "http4s-core" % http4sVersion,
@@ -35,19 +34,37 @@ lazy val testDependencies = Seq(
   "org.scalacheck" %% "scalacheck" % "1.14.3",
 )
 
+ThisBuild / organization := "io.github.d2a4u"
+
 lazy val commonSettings = Seq(
-  organization in ThisBuild := "io.sqs4s",
   scalaVersion := "2.13.5",
   crossScalaVersions := Seq("2.12.13", "2.13.5"),
-  parallelExecution in Test := false,
+  Test / parallelExecution := false,
   scalafmtOnCompile := true,
   licenses += ("MIT", url("http://opensource.org/licenses/MIT")),
+  homepage := Some(url("https://d2a4u.github.io/sqs4s/")),
   publishMavenStyle := true,
-  bintrayRepository := "sqs4s",
   Test / publishArtifact := false,
   pomIncludeRepository := { _ => false },
-  releaseCrossBuild := true,
-  bintrayReleaseOnPublish := false,
+  scmInfo := Some(
+    ScmInfo(
+      url("https://github.com/d2a4u/sqs4s"),
+      "git@github.com:d2a4u/sqs4s.git"
+    )
+  ),
+  developers := List(
+    Developer(
+      "d2a4u",
+      "D A Khu",
+      "d2a4u@users.noreply.github.com",
+      url("https://github.com/d2a4u")
+    )
+  ),
+  pgpPublicRing := file("/tmp/local.pubring.asc"),
+  pgpSecretRing := file("/tmp/local.secring.asc"),
+  Global / releaseEarlyWith := SonatypePublisher,
+  sonatypeProfileName := "io.github.d2a4u",
+  releaseEarlyEnableSyncToMaven := true,
   addCompilerPlugin(
     "org.typelevel" % "kind-projector" % "0.11.3" cross CrossVersion.full
   )
@@ -74,7 +91,6 @@ lazy val noPublish =
 
 lazy val root = project
   .in(file("."))
-  .enablePlugins(JmhPlugin)
   .settings(name := "sqs4s", commonSettings, noPublish)
   .aggregate(native)
 
