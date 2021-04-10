@@ -8,8 +8,7 @@ import scala.concurrent.duration._
 @deprecated("use SqsConfig instead", "1.1.0")
 case class SqsSettings(queue: Uri, auth: AwsAuth)
 
-/**
-  * Settings for SQS consumer
+/** Settings for SQS consumer
   * @param maxRead maximum number of messages to receive per request, max is 10
   * @param visibilityTimeout a timeout in seconds to prevent other consumers from processing the message again
   * @param waitTimeSeconds an option wait time for long polling, the request is blocked during this time

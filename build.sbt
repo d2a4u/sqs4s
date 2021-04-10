@@ -31,18 +31,35 @@ lazy val testDependencies = Seq(
 ) ++ circe
 
 lazy val commonSettings = Seq(
-  organization in ThisBuild := "io.sqs4s",
+  organization in ThisBuild := "io.github.d2a4u",
   scalaVersion := "2.13.5",
   crossScalaVersions := Seq("2.12.13", "2.13.5"),
   parallelExecution in Test := false,
   scalafmtOnCompile := true,
   licenses += ("MIT", url("http://opensource.org/licenses/MIT")),
+  homepage := Some(url("https://d2a4u.github.io/sqs4s/")),
   publishMavenStyle := true,
-  bintrayRepository := "sqs4s",
   publishArtifact in Test := false,
   pomIncludeRepository := { _ => false },
-  releaseCrossBuild := true,
-  bintrayReleaseOnPublish := false,
+  scmInfo := Some(
+    ScmInfo(
+      url("https://github.com/d2a4u/sqs4s"),
+      "git@github.com:d2a4u/sqs4s.git"
+    )
+  ),
+  developers := List(
+    Developer(
+      "d2a4u",
+      "D A Khu",
+      "d2a4u@users.noreply.github.com",
+      url("https://github.com/d2a4u")
+    )
+  ),
+  pgpPublicRing := file("/tmp/local.pubring.asc"),
+  pgpSecretRing := file("/tmp/local.secring.asc"),
+  releaseEarlyWith in Global := SonatypePublisher,
+  sonatypeProfileName := "io.github.d2a4u",
+  releaseEarlyEnableSyncToMaven := true,
   addCompilerPlugin(
     "org.typelevel" % "kind-projector" % "0.11.3" cross CrossVersion.full
   )
@@ -69,7 +86,6 @@ lazy val noPublish =
 
 lazy val root = project
   .in(file("."))
-  .enablePlugins(JmhPlugin)
   .settings(name := "sqs4s", commonSettings, noPublish)
   .aggregate(native)
 
