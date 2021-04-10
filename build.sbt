@@ -36,10 +36,10 @@ lazy val testDependencies = Seq(
 )
 
 lazy val commonSettings = Seq(
-  ThisBuild / organization := "io.sqs4s",
+  organization in ThisBuild := "io.sqs4s",
   scalaVersion := "2.13.5",
   crossScalaVersions := Seq("2.12.13", "2.13.5"),
-  Test / parallelExecution := false,
+  parallelExecution in Test := false,
   scalafmtOnCompile := true,
   licenses += ("MIT", url("http://opensource.org/licenses/MIT")),
   publishMavenStyle := true,
