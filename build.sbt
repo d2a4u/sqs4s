@@ -32,8 +32,8 @@ lazy val testDependencies = Seq(
 
 lazy val commonSettings = Seq(
   organization in ThisBuild := "io.sqs4s",
-  scalaVersion := "2.13.3",
-  crossScalaVersions := Seq("2.12.12", "2.13.3"),
+  scalaVersion := "2.13.5",
+  crossScalaVersions := Seq("2.12.13", "2.13.5"),
   parallelExecution in Test := false,
   scalafmtOnCompile := true,
   licenses += ("MIT", url("http://opensource.org/licenses/MIT")),
@@ -44,7 +44,7 @@ lazy val commonSettings = Seq(
   releaseCrossBuild := true,
   bintrayReleaseOnPublish := false,
   addCompilerPlugin(
-    "org.typelevel" % "kind-projector" % "0.11.0" cross CrossVersion.full
+    "org.typelevel" % "kind-projector" % "0.11.3" cross CrossVersion.full
   )
 )
 
