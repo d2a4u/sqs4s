@@ -33,8 +33,7 @@ case class TemporarySecurityCredential(
   sessionToken: String
 ) extends Credential
 
-/**
-  * Implementation which follows AWS doc
+/** Implementation which follows AWS doc
   * https://docs.aws.amazon.com/sdk-for-java/v1/developer-guide/credentials.html#credentials-default
   */
 object Credentials {
@@ -60,8 +59,7 @@ object Credentials {
       TemporarySecurityCredential(accessKey, secretKey, sessionToken).pure[F].widen
     )
 
-  /**
-    * Load Credentials in this order:
+  /** Load Credentials in this order:
     * Environment variables
     * Java system properties
     * Instance profile credentials– used on EC2 instances, and delivered through
@@ -194,8 +192,7 @@ object Credentials {
     temporaryCredentials[F](refresh, ttl, refreshBefore)
   }
 
-  /**
-    * Create a resource of temporary credential, credential is automatically
+  /** Create a resource of temporary credential, credential is automatically
     * retrieved from EC2 instance metadata: https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/iam-roles-for-amazon-ec2.html#instance-metadata-security-credentials
     *
     * @param client        HTTP client
