@@ -85,7 +85,7 @@ class Index extends React.Component {
         [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
         [![build](https://github.com/d2a4u/sqs4s/actions/workflows/build-main.yml/badge.svg?branch=master)](https://github.com/d2a4u/sqs4s/actions/workflows/build-main.yml)
         [![Codacy Badge](https://api.codacy.com/project/badge/Grade/8a331de033cb4700acddb175af4148bb)](https://www.codacy.com/app/d2a4u/sqs4s?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=d2a4u/sqs4s&amp;utm_campaign=Badge_Grade)
-        [![Download](https://api.bintray.com/packages/d2a4u/sqs4s/sqs4s-native/images/download.svg)](https://bintray.com/d2a4u/sqs4s/sqs4s-native/_latestVersion)
+        [![Download](https://badgen.net/maven/v/maven-central/io.github.d2a4u/sqs4s-native_2.13)](https://search.maven.org/search?q=g:io.github.d2a4u%20AND%20a:sqs4s-*)
         [![Join the chat at https://gitter.im/sqs4s/community](https://badges.gitter.im/sqs4s/community.svg)](https://gitter.im/sqs4s/community?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
         </MarkdownBlock>
       </div>
@@ -95,18 +95,12 @@ class Index extends React.Component {
         <MarkdownBlock>
         ## Get Started
         </MarkdownBlock>
-        Add Bintray resolver:
-        <MarkdownBlock>
-        ```
-        resolvers += Resolver.bintrayRepo("d2a4u", "sqs4s")
-        ```
-        </MarkdownBlock>
         <MarkdownBlock>
         Add the following to your `build.sbt`, see the badge above for latest version. Supports Scala 2.12 and 2.13.
         </MarkdownBlock>
         <MarkdownBlock>
         ```
-        libraryDependencies += "io.sqs4s" %% "sqs4s-native" % "LATEST_VERSION"
+        libraryDependencies += "io.github.d2a4u" %% "sqs4s-native" % "LATEST_VERSION"
         ```
         </MarkdownBlock>
       </div>
