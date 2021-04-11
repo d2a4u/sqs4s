@@ -8,6 +8,7 @@ import cats.syntax.all._
 import fs2._
 import org.http4s.client.Client
 import org.typelevel.log4cats.Logger
+import org.typelevel.log4cats.slf4j.Slf4jLogger
 import sqs4s.api.errors.{DeleteMessageBatchErrors, RetriableServerError}
 import sqs4s.api.lo._
 import sqs4s.serialization.SqsDeserializer
@@ -98,6 +99,9 @@ object SqsConsumer {
 
   def apply[T]: ApplyPartiallyApplied[T] =
     new ApplyPartiallyApplied(dummy = true)
+
+  def default[T]: DefaultPartiallyApplied[T] =
+    new DefaultPartiallyApplied(dummy = true)
 
   private[hi] final class ApplyPartiallyApplied[T] private[SqsConsumer] (
     private val dummy: Boolean
@@ -306,5 +310,23 @@ object SqsConsumer {
         private def dedup[V, U](entries: Chunk[V], id: V => U): Seq[V] =
           entries.toList.map(t => id(t) -> t).toMap.values.toSeq
       }
+  }
+
+  private[hi] final class DefaultPartiallyApplied[T] private[SqsConsumer] (
+    private val dummy: Boolean
+  ) extends AnyVal {
+    def apply[F[_]: Concurrent: Parallel: Clock: Timer: SqsDeserializer[
+      *[_],
+      T
+    ]](
+      client: Client[F],
+      consumerConfig: ConsumerConfig[F]
+    ): SqsConsumer[F, T] = {
+      new ApplyPartiallyApplied(dummy = true).apply(
+        client,
+        consumerConfig,
+        Slf4jLogger.getLogger[F]
+      )
+    }
   }
 }

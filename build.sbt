@@ -18,6 +18,7 @@ lazy val dependencies = Seq(
   "org.typelevel" %% "cats-core" % catsVersion,
   "org.typelevel" %% "cats-effect" % catsEffectVersion,
   "org.typelevel" %% "log4cats-core" % log4catsVersion,
+  "org.typelevel" %% "log4cats-slf4j" % log4catsVersion,
   "co.fs2" %% "fs2-core" % fs2Version,
   "org.scala-lang.modules" %% "scala-collection-compat" % "2.4.3",
   "org.scala-lang.modules" %% "scala-xml" % "1.3.0",
@@ -28,10 +29,9 @@ lazy val testDependencies = Seq(
   "io.circe" %% "circe-generic" % circeVersion,
   "io.circe" %% "circe-parser" % circeVersion,
   "org.http4s" %% "http4s-blaze-client" % http4sVersion,
-  "org.typelevel" %% "log4cats-slf4j" % log4catsVersion,
   "ch.qos.logback" % "logback-classic" % logbackVersion,
   "org.scalatest" %% "scalatest" % "3.2.0",
-  "org.scalacheck" %% "scalacheck" % "1.14.3",
+  "org.scalacheck" %% "scalacheck" % "1.14.3"
 )
 
 ThisBuild / organization := "io.github.d2a4u"

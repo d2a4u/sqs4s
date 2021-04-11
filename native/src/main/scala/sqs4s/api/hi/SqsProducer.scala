@@ -7,6 +7,7 @@ import cats.syntax.all._
 import fs2.Stream
 import org.http4s.client.Client
 import org.typelevel.log4cats.Logger
+import org.typelevel.log4cats.slf4j.Slf4jLogger
 import sqs4s.api.errors.MessageTooLarge
 import sqs4s.api.lo.{SendMessage, SendMessageBatch}
 import sqs4s.serialization.SqsSerializer
@@ -38,18 +39,18 @@ object SqsProducer {
   def apply[T]: ApplyPartiallyApplied[T] =
     new ApplyPartiallyApplied(dummy = true)
 
+  def default[T]: DefaultPartiallyApplied[T] =
+    new DefaultPartiallyApplied(dummy = true)
+
   private[hi] final class ApplyPartiallyApplied[T] private[SqsProducer] (
     private val dummy: Boolean
   ) extends AnyVal {
-    def apply[F[_]](
+    def apply[F[_]: Concurrent: Timer: Clock](
       client: Client[F],
       config: SqsConfig[F],
       logger: Logger[F]
     )(
-      implicit serializer: SqsSerializer[T],
-      ev1: Concurrent[F],
-      ev2: Timer[F],
-      ev3: Clock[F]
+      implicit serializer: SqsSerializer[T]
     ): SqsProducer[F, T] =
       new SqsProducer[F, T] {
         override def produce(
@@ -93,5 +94,22 @@ object SqsProducer {
               }
             }
       }
+  }
+
+  private[hi] final class DefaultPartiallyApplied[T] private[SqsProducer] (
+    private val dummy: Boolean
+  ) extends AnyVal {
+    def apply[F[_]: Concurrent: Timer: Clock](
+      client: Client[F],
+      config: SqsConfig[F]
+    )(
+      implicit serializer: SqsSerializer[T]
+    ): SqsProducer[F, T] = {
+      new ApplyPartiallyApplied(dummy = true).apply(
+        client,
+        config,
+        Slf4jLogger.getLogger[F]
+      )
+    }
   }
 }
