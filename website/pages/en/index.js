@@ -95,18 +95,12 @@ class Index extends React.Component {
         <MarkdownBlock>
         ## Get Started
         </MarkdownBlock>
-        Add Bintray resolver:
-        <MarkdownBlock>
-        ```
-        resolvers += Resolver.bintrayRepo("d2a4u", "sqs4s")
-        ```
-        </MarkdownBlock>
         <MarkdownBlock>
         Add the following to your `build.sbt`, see the badge above for latest version. Supports Scala 2.12 and 2.13.
         </MarkdownBlock>
         <MarkdownBlock>
         ```
-        libraryDependencies += "io.sqs4s" %% "sqs4s-native" % "LATEST_VERSION"
+        libraryDependencies += "io.github.d2a4u" %% "sqs4s-native" % "LATEST_VERSION"
         ```
         </MarkdownBlock>
       </div>
