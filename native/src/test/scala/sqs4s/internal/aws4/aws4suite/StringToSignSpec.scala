@@ -34,8 +34,8 @@ class StringToSignSpec extends IOSpec with Inspectors {
       val folder = new File(testSuite.getPath)
       if (folder.exists && folder.isDirectory)
         folder.listFiles.toList
-          .filter(
-            f => !List("normalize-path", "post-sts-token").contains(f.getName)
+          .filter(f =>
+            !List("normalize-path", "post-sts-token").contains(f.getName)
           )
           .pure[IO]
       else new Exception("No test files found").raiseError[IO, List[File]]

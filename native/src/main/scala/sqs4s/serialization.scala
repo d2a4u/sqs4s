@@ -1,20 +1,19 @@
 package sqs4s
 
-import cats.MonadError
-import cats.implicits._
+import cats.Applicative
+import cats.syntax.all._
 
 object serialization {
-
-  abstract class SqsDeserializer[F[_]: MonadError[*[_], Throwable], T] {
+  sealed trait SqsDeserializer[F[_], T] {
     def deserialize(s: String): F[T]
   }
 
   object SqsDeserializer {
-    def apply[F[_]: MonadError[*[_], Throwable], T](
+    def apply[F[_], T](
       implicit ev: SqsDeserializer[F, T]
     ): SqsDeserializer[F, T] = ev
 
-    def instance[F[_]: MonadError[*[_], Throwable], T](
+    def instance[F[_], T](
       f: String => F[T]
     ): SqsDeserializer[F, T] =
       new SqsDeserializer[F, T] {
@@ -22,25 +21,29 @@ object serialization {
       }
   }
 
-  abstract class SqsSerializer[T] {
+  sealed trait SqsSerializer[T] {
     def serialize(t: T): String
   }
 
   object SqsSerializer {
-    def apply[T](implicit ev: SqsSerializer[T]): SqsSerializer[T] = ev
+    def apply[T](
+      implicit ev: SqsSerializer[T]
+    ): SqsSerializer[T] = ev
 
     def instance[T](f: T => String): SqsSerializer[T] =
-      (t: T) => f(t)
+      new SqsSerializer[T] {
+        override def serialize(t: T): String = f(t)
+      }
   }
 
   object instances {
-    implicit def stringSqsDeserializer[F[_]: MonadError[*[_], Throwable]]
+    implicit def stringSqsDeserializer[F[_]: Applicative]
       : SqsDeserializer[F, String] =
       new SqsDeserializer[F, String] {
         def deserialize(s: String): F[String] = s.pure[F]
       }
 
-    implicit val stringSqsSerializer: SqsSerializer[String] =
+    implicit final val stringSqsSerializer: SqsSerializer[String] =
       new SqsSerializer[String] {
         def serialize(t: String): String = t
       }

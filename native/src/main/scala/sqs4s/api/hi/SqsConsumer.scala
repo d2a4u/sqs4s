@@ -1,15 +1,16 @@
-package sqs4s.api.hi
+package sqs4s.api
+package hi
 
 import cats.Parallel
 import cats.data.NonEmptyList
 import cats.effect.{Clock, Concurrent, Timer}
-import cats.implicits._
+import cats.syntax.all._
 import fs2._
 import org.http4s.client.Client
+import org.typelevel.log4cats.Logger
+import org.typelevel.log4cats.slf4j.Slf4jLogger
 import sqs4s.api.errors.{DeleteMessageBatchErrors, RetriableServerError}
 import sqs4s.api.lo._
-import sqs4s.api.{ConsumerConfig, ConsumerSettings, SqsConfig}
-import sqs4s.auth.Credentials
 import sqs4s.serialization.SqsDeserializer
 
 import scala.concurrent.TimeoutException
@@ -17,8 +18,7 @@ import scala.concurrent.duration._
 
 trait SqsConsumer[F[_], T] {
 
-  /**
-    * Read messages from SQS queue as T, for each message, apply process
+  /** Read messages from SQS queue as T, for each message, apply process
     * `process` function and automatically acknowledge the message on completion
     * of `process`.
     *
@@ -27,8 +27,7 @@ trait SqsConsumer[F[_], T] {
     */
   def consume(process: T => F[Unit]): F[Unit]
 
-  /**
-    * Parallel read messages from SQS queue as a Stream of T, for each message,
+  /** Parallel read messages from SQS queue as a Stream of T, for each message,
     * apply process `process` function and automatically acknowledge the
     * messages in batch.
     *
@@ -42,8 +41,7 @@ trait SqsConsumer[F[_], T] {
     process: T => F[Unit]
   ): Stream[F, Unit]
 
-  /**
-    * Read messages from SQS queue as a Stream of T, automatically acknowledge
+  /** Read messages from SQS queue as a Stream of T, automatically acknowledge
     * messages BEFORE pushing T into the Stream.
     *
     * Suitable for FIFO and non-FIFO queue. The message is acknowledged one by
@@ -51,8 +49,7 @@ trait SqsConsumer[F[_], T] {
     */
   def dequeue: Stream[F, T]
 
-  /**
-    * Parallel read messages from SQS queue as a Stream of T, automatically
+  /** Parallel read messages from SQS queue as a Stream of T, automatically
     * acknowledge messages BEFORE pushing T into the Stream.
     *
     * NOTE: This is not suitable for FIFO queue because it reads messages in
@@ -63,38 +60,32 @@ trait SqsConsumer[F[_], T] {
     groupWithin: FiniteDuration = 500.millis
   ): Stream[F, T]
 
-  /**
-    * Read N messages from the queue without acknowledge them.
+  /** Read N messages from the queue without acknowledge them.
     */
   def peek(number: Int): Stream[F, T]
 
-  /**
-    * Similar to `peek` but return also a ReceiptHandle to manually acknowledge
+  /** Similar to `peek` but return also a ReceiptHandle to manually acknowledge
     * messages and return up to `maxRead` number of messages.
     */
   def read: F[Chunk[ReceiveMessage.Result[T]]]
 
-  /**
-    * Similar to `read` but return a Stream of `ReceiveMessage.Result[T]` which
+  /** Similar to `read` but return a Stream of `ReceiveMessage.Result[T]` which
     * can be used to manually acknowledge messages.
     */
   def reads: Stream[F, ReceiveMessage.Result[T]]
 
-  /**
-    * Similar to `reads` but read messages in parallel.
+  /** Similar to `reads` but read messages in parallel.
     *
     * NOTE: This is not suitable for FIFO queue because it reads messages in
     * parallel so the order is lost.
     */
   def readsAsync(maxConcurrent: Int): Stream[F, ReceiveMessage.Result[T]]
 
-  /**
-    * Acknowledge that a message has been read.
+  /** Acknowledge that a message has been read.
     */
   def ack: Pipe[F, ReceiptHandle, Unit]
 
-  /**
-    * Batch acknowledge that messages has been read.
+  /** Batch acknowledge that messages has been read.
     */
   def batchAck(
     maxConcurrent: Int,
@@ -109,42 +100,19 @@ object SqsConsumer {
   def apply[T]: ApplyPartiallyApplied[T] =
     new ApplyPartiallyApplied(dummy = true)
 
+  def default[T]: DefaultPartiallyApplied[T] =
+    new DefaultPartiallyApplied(dummy = true)
+
   private[hi] final class ApplyPartiallyApplied[T] private[SqsConsumer] (
     private val dummy: Boolean
   ) extends AnyVal {
-
-    @deprecated("use ConsumerConfig instead", "1.1.0")
     def apply[F[_]: Concurrent: Parallel: Clock: Timer: SqsDeserializer[
       *[_],
       T
     ]](
       client: Client[F],
-      consumerSettings: ConsumerSettings
-    ): SqsConsumer[F, T] =
-      apply[F](
-        client,
-        ConsumerConfig(
-          consumerSettings.queue,
-          Credentials.basic[F](
-            consumerSettings.auth.accessKey,
-            consumerSettings.auth.secretKey
-          ),
-          consumerSettings.auth.region,
-          consumerSettings.maxRead,
-          consumerSettings.visibilityTimeout,
-          consumerSettings.waitTimeSeconds,
-          consumerSettings.pollingRate,
-          consumerSettings.initialDelay,
-          consumerSettings.maxRetry
-        )
-      )
-
-    def apply[F[_]: Concurrent: Parallel: Clock: Timer: SqsDeserializer[
-      *[_],
-      T
-    ]](
-      client: Client[F],
-      consumerConfig: ConsumerConfig[F]
+      consumerConfig: ConsumerConfig[F],
+      logger: Logger[F]
     ): SqsConsumer[F, T] =
       new SqsConsumer[F, T] {
         private val config =
@@ -160,7 +128,8 @@ object SqsConsumer {
               Stream.eval(process(entry.body)).flatMap { _ =>
                 retry(DeleteMessage[F](entry.receiptHandle).runWith(
                   client,
-                  config
+                  config,
+                  logger
                 ).void)
               }
             }
@@ -193,7 +162,8 @@ object SqsConsumer {
                     dedup[DeleteMessageBatch.Entry, String](entries, _.id)
                   retry(DeleteMessageBatch[F](unique).runWith(
                     client,
-                    config
+                    config,
+                    logger
                   ))
                     .evalMap { result =>
                       result.errors match {
@@ -217,7 +187,8 @@ object SqsConsumer {
             _.flatMap { entry =>
               retry(DeleteMessage[F](entry.receiptHandle).runWith(
                 client,
-                config
+                config,
+                logger
               ).as(entry.body))
             }
           reads
@@ -236,7 +207,7 @@ object SqsConsumer {
               }
               val unique =
                 dedup[DeleteMessageBatch.Entry, String](entries, _.id)
-              DeleteMessageBatch(unique).runWith(client, config).map {
+              DeleteMessageBatch(unique).runWith(client, config, logger).map {
                 deleted =>
                   val ids = deleted.successes.map(_.id)
                   Chunk.seq(records.collect {
@@ -264,7 +235,7 @@ object SqsConsumer {
             consumerConfig.maxRead,
             consumerConfig.visibilityTimeout,
             consumerConfig.waitTimeSeconds
-          ).runWith(client, config)
+          ).runWith(client, config, logger)
 
         override def reads: Stream[F, ReceiveMessage.Result[T]] =
           Stream
@@ -276,7 +247,7 @@ object SqsConsumer {
               )
             )
             .metered(consumerConfig.pollingRate)
-            .evalMap(_.runWith(client, config))
+            .evalMap(_.runWith(client, config, logger))
             .filter(_.nonEmpty)
             .flatMap(Stream.chunk)
 
@@ -291,13 +262,13 @@ object SqsConsumer {
               )
             )
             .metered(consumerConfig.pollingRate)
-            .mapAsync(maxConcurrent)(_.runWith(client, config))
+            .mapAsync(maxConcurrent)(_.runWith(client, config, logger))
             .filter(_.nonEmpty)
             .flatMap(Stream.chunk)
 
         override def ack: Pipe[F, ReceiptHandle, Unit] =
           _.evalMap { handle =>
-            DeleteMessage[F](handle).runWith(client, config).void
+            DeleteMessage[F](handle).runWith(client, config, logger).void
           }
 
         override def batchAck(
@@ -308,7 +279,8 @@ object SqsConsumer {
             val unique = dedup[DeleteMessageBatch.Entry, String](entries, _.id)
             retry(DeleteMessageBatch[F](unique).runWith(
               client,
-              config
+              config,
+              logger
             ))
               .evalMap { result =>
                 result.errors match {
@@ -331,11 +303,30 @@ object SqsConsumer {
               {
                 case _: TimeoutException => true
                 case _: RetriableServerError => true
+                case _ => false
               }
             )
 
         private def dedup[V, U](entries: Chunk[V], id: V => U): Seq[V] =
           entries.toList.map(t => id(t) -> t).toMap.values.toSeq
       }
+  }
+
+  private[hi] final class DefaultPartiallyApplied[T] private[SqsConsumer] (
+    private val dummy: Boolean
+  ) extends AnyVal {
+    def apply[F[_]: Concurrent: Parallel: Clock: Timer: SqsDeserializer[
+      *[_],
+      T
+    ]](
+      client: Client[F],
+      consumerConfig: ConsumerConfig[F]
+    ): SqsConsumer[F, T] = {
+      new ApplyPartiallyApplied(dummy = true).apply(
+        client,
+        consumerConfig,
+        Slf4jLogger.getLogger[F]
+      )
+    }
   }
 }

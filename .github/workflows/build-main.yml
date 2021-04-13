@@ -1,0 +1,89 @@
+name: build-main
+
+on:
+  push:
+    branches:
+      - 'master'
+    paths-ignore:
+      - '**.md'
+      - 'website/**'
+
+jobs:
+  build-tests:
+    runs-on: ubuntu-20.04
+    steps:
+      - uses: actions/checkout@v2
+      - name: Setup Scala
+        uses: olafurpg/setup-scala@v10
+        with:
+          java-version: adopt@1.11
+      - name: Gen cache keys
+        run: |
+          md5sum project/build.properties project/plugins.sbt build.sbt > $GITHUB_WORKSPACE/.sbt_cache_key
+          cat $GITHUB_WORKSPACE/.sbt_cache_key
+      - name: Check cache
+        uses: actions/cache@v2.1.1
+        with:
+          key: sbt-${{ hashFiles('**/.sbt_cache_key') }}
+          path: |
+            ~/.ivy2
+            ~/.sbt
+            ~/.cache/coursier
+      - name: Run build and tests
+        run:
+          sbt -v -Dfile.encoding=UTF-8 ";+native/test;+native/it:test"
+        env:
+          AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_KEY: ${{ secrets.AWS_SECRET_KEY }}
+
+  tag-release:
+    needs: build-tests
+    runs-on: ubuntu-20.04
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          fetch-depth: 0 # fetch the whole repo history
+      - name: Setup Scala
+        uses: olafurpg/setup-scala@v10
+        with:
+          java-version: adopt@1.11
+      - name: Check cache
+        uses: actions/cache@v2.1.1
+        with:
+          key: sbt-${{ hashFiles('**/.sbt_cache_key') }}
+          path: |
+            ~/.ivy2
+            ~/.sbt
+            ~/.cache/coursier
+      - name: Bump version and push tag
+        uses: anothrNick/github-tag-action@1.34.0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          WITH_V: true
+          TAG_CONTEXT: branch
+          RELEASE_BRANCHES: master
+          DEFAULT_BUMP: patch
+      - name: Import keys
+        run: |
+          touch /tmp/local.pubring.asc
+          touch /tmp/local.secring.asc
+          echo $PGP_PUB_RING > /tmp/local.pubring.asc
+          echo $PGP_SEC_RING > /tmp/local.secring.asc
+        env:
+          PGP_PUB_RING: ${{ secrets.PGP_PUB_RING }}
+          PGP_SEC_RING: ${{ secrets.PGP_SEC_RING }}
+      - name: Publish
+        run: |
+          sbt +releaseEarly -J-Xms3G -J-Xmx6G -J-Xss4m
+        env:
+          AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_KEY: ${{ secrets.AWS_SECRET_KEY }}
+          SONATYPE_USER: ${{ secrets.SONATYPE_USER }}
+          SONATYPE_PASSWORD: ${{ secrets.SONATYPE_PASSWORD }}
+          PGP_PASSWORD: ${{ secrets.PGP_PASSWORD }}
+      - name: Clean up
+        run: |
+          rm /tmp/local.pubring.asc
+          rm /tmp/local.secring.asc

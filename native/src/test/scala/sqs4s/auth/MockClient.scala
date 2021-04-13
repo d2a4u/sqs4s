@@ -15,7 +15,7 @@ trait MockClient[F[_]] extends Client[F] {
   override def toKleisli[A](f: Response[F] => F[A]): Kleisli[F, Request[F], A] =
     ???
 
-  override def toService[A](f: Response[F] => F[A]): Service[F, Request[F], A] =
+  override def toService[A](f: Response[F] => F[A]): Kleisli[F, Request[F], A] =
     ???
 
   override def toHttpApp: HttpApp[F] = ???

@@ -37,7 +37,7 @@ class CredentialsSpec extends IOSpec with Arbitraries {
     }
 
   it should "get credential on initialization" in {
-    Resource.liftF(Ref.of[IO, Int](0)).flatMap { counter =>
+    Resource.eval(Ref.of[IO, Int](0)).flatMap { counter =>
       Credentials.instanceMetadata(
         calledCounterMockClient(counter, genCredentials),
         2.seconds,
@@ -64,7 +64,7 @@ class CredentialsSpec extends IOSpec with Arbitraries {
   }
 
   it should "refresh token periodically when it expires" in {
-    val called = Resource.liftF(Ref.of[IO, Int](0)).use { counter =>
+    val called = Resource.eval(Ref.of[IO, Int](0)).use { counter =>
       Credentials.instanceMetadata(
         calledCounterMockClient(counter, genCredentials),
         2.second,
@@ -92,7 +92,7 @@ class CredentialsSpec extends IOSpec with Arbitraries {
         )
       } yield updated
 
-    val creds = Resource.liftF(Ref.of[IO, Int](0)).use { counter =>
+    val creds = Resource.eval(Ref.of[IO, Int](0)).use { counter =>
       Credentials.instanceMetadata(
         calledCounterMockClient(counter, genCredentials),
         2.second,

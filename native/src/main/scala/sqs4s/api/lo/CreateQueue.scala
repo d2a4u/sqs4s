@@ -1,8 +1,9 @@
 package sqs4s.api.lo
 
 import cats.effect.{Clock, Sync, Timer}
-import cats.implicits._
+import cats.syntax.all._
 import org.http4s.{Request, Uri}
+import org.typelevel.log4cats.Logger
 import sqs4s.api.SqsConfig
 import sqs4s.api.errors.UnexpectedResponseError
 import sqs4s.api.lo.CreateQueue.defaults._
@@ -10,7 +11,7 @@ import sqs4s.api.lo.CreateQueue.defaults._
 import scala.concurrent.duration._
 import scala.xml.Elem
 
-case class CreateQueue[F[_]: Sync: Clock: Timer](
+final case class CreateQueue[F[_]: Sync: Clock: Timer](
   name: String,
   sqsEndpoint: Uri,
   delay: Duration = DelaySeconds,
@@ -19,7 +20,7 @@ case class CreateQueue[F[_]: Sync: Clock: Timer](
   visibilityTimeout: Int = VisibilityTimeout
 ) extends Action[F, CreateQueue.Result] {
 
-  def mkRequest(config: SqsConfig[F]): F[Request[F]] = {
+  def mkRequest(config: SqsConfig[F], logger: Logger[F]): F[Request[F]] = {
     val attributes = List(
       "DelaySeconds" -> delay.toSeconds.toString,
       "MaximumMessageSize" -> maxMessageSize.toString,
@@ -47,7 +48,7 @@ case class CreateQueue[F[_]: Sync: Clock: Timer](
       sqsEndpoint,
       config.credentials,
       config.region
-    ).render
+    ).render(logger)
   }
 
   def parseResponse(response: Elem): F[CreateQueue.Result] = {
@@ -71,5 +72,5 @@ object CreateQueue {
     val VisibilityTimeout = 30
   }
 
-  case class Result(queueUrl: String) extends AnyVal
+  final case class Result(queueUrl: String) extends AnyVal
 }
