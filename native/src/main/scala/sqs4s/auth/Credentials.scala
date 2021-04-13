@@ -1,7 +1,7 @@
 package sqs4s.auth
 
 import cats.Applicative
-import cats.effect.{Concurrent, Resource, Sync, Timer}
+import cats.effect.{Concurrent, Resource, Sync}
 import cats.syntax.all._
 import fs2._
 import org.http4s.Method.{GET, PUT}
@@ -14,6 +14,7 @@ import org.http4s.{Header, Response, Status, Uri}
 import sqs4s.auth.errors._
 
 import scala.concurrent.duration._
+import cats.effect.Temporal
 
 trait Credentials[F[_]] {
   def get: F[Credential]
@@ -71,7 +72,7 @@ object Credentials {
     * @tparam F an effect which represents the side effects
     * @return
     */
-  def chain[F[_]: Concurrent: Timer](
+  def chain[F[_]: Concurrent: Temporal](
     client: Client[F],
     ttl: FiniteDuration = 6.hours,
     refreshBefore: FiniteDuration = 5.minutes
@@ -161,7 +162,7 @@ object Credentials {
       }
     }
 
-  def containerMetadata[F[_]: Concurrent: Timer](
+  def containerMetadata[F[_]: Concurrent: Temporal](
     client: Client[F],
     ttl: FiniteDuration = 6.hours,
     refreshBefore: FiniteDuration = 5.minutes,
@@ -201,7 +202,7 @@ object Credentials {
     * @tparam F an effect which represents the side effects
     * @return a Resource of TemporarySecurityCredential
     */
-  def instanceMetadata[F[_]: Concurrent: Timer](
+  def instanceMetadata[F[_]: Concurrent: Temporal](
     client: Client[F],
     ttl: FiniteDuration = 6.hours,
     refreshBefore: FiniteDuration = 5.minutes,
@@ -253,7 +254,7 @@ object Credentials {
       }
     }
 
-  private def temporaryCredentials[F[_]: Concurrent: Timer](
+  private def temporaryCredentials[F[_]: Concurrent: Temporal](
     refresh: F[CredentialResponse],
     ttl: FiniteDuration,
     refreshBefore: FiniteDuration

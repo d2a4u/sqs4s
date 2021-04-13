@@ -2,7 +2,7 @@ package sqs4s.api
 package lo
 
 import cats.MonadError
-import cats.effect.{Sync, Timer}
+import cats.effect.Sync
 import cats.syntax.all._
 import fs2.Chunk
 import org.http4s.client.Client
@@ -14,8 +14,9 @@ import sqs4s.auth.errors.UnauthorizedAuthError
 
 import scala.concurrent.duration._
 import scala.xml.{Elem, XML}
+import cats.effect.Temporal
 
-abstract class Action[F[_]: Sync: Timer, T] {
+abstract class Action[F[_]: Sync: Temporal, T] {
   val version = List("Version" -> "2012-11-05")
 
   def runWith(

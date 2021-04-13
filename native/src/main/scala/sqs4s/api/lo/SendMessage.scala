@@ -1,6 +1,6 @@
 package sqs4s.api.lo
 
-import cats.effect.{Clock, Sync, Timer}
+import cats.effect.{Clock, Sync}
 import cats.syntax.all._
 import org.http4s.Request
 import org.typelevel.log4cats.Logger
@@ -10,8 +10,9 @@ import sqs4s.serialization.SqsSerializer
 
 import scala.concurrent.duration.Duration
 import scala.xml.Elem
+import cats.effect.Temporal
 
-final case class SendMessage[F[_]: Sync: Clock: Timer, T](
+final case class SendMessage[F[_]: Sync: Clock: Temporal, T](
   message: T,
   attributes: Map[String, String] = Map.empty,
   delay: Option[Duration] = None,
