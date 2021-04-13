@@ -1,37 +1,39 @@
 package sqs4s.api.lo
 
 import cats.effect.{Clock, Sync, Timer}
-import cats.implicits._
+import cats.syntax.all._
 import fs2.Chunk
 import org.http4s.Request
+import org.typelevel.log4cats.Logger
 import sqs4s.api.SqsConfig
 import sqs4s.api.errors.UnexpectedResponseError
 import sqs4s.serialization.SqsDeserializer
 
 import scala.xml.Elem
 
-case class ReceiveMessage[F[_]: Sync: Clock: Timer, T](
+final case class ReceiveMessage[F[_]: Sync: Clock: Timer, T](
   maxNumberOfMessages: Int = 10, // max 10 per sqs api doc
   visibilityTimeout: Int = 15,
   waitTimeSeconds: Option[Int] = None
 )(implicit decoder: SqsDeserializer[F, T])
     extends Action[F, Chunk[ReceiveMessage.Result[T]]] {
 
-  def mkRequest(config: SqsConfig[F]): F[Request[F]] = {
+  def mkRequest(config: SqsConfig[F], logger: Logger[F]): F[Request[F]] = {
     val params = List(
       "Action" -> "ReceiveMessage",
       "MaxNumberOfMessages" -> maxNumberOfMessages.toString,
       "VisibilityTimeout" -> visibilityTimeout.toString,
       "AttributeName" -> "All"
     ) ++ version ++ waitTimeSeconds.toList.map(sec =>
-      "WaitTimeSeconds" -> sec.toString)
+      "WaitTimeSeconds" -> sec.toString
+    )
 
     SignedRequest.post[F](
       params,
       config.queue,
       config.credentials,
       config.region
-    ).render
+    ).render(logger)
   }
 
   def parseResponse(response: Elem): F[Chunk[ReceiveMessage.Result[T]]] = {
@@ -71,10 +73,10 @@ case class ReceiveMessage[F[_]: Sync: Clock: Timer, T](
   }
 }
 
-case class ReceiptHandle(value: String) extends AnyVal
+final case class ReceiptHandle(value: String) extends AnyVal
 
 object ReceiveMessage {
-  case class Result[T](
+  final case class Result[T](
     messageId: String,
     receiptHandle: ReceiptHandle,
     body: T,

@@ -4,6 +4,7 @@ import cats.effect.{Clock, IO}
 import fs2.Chunk
 import org.http4s.Uri
 import org.http4s.client.blaze.BlazeClientBuilder
+import org.typelevel.log4cats.slf4j.Slf4jLogger
 import sqs4s.IOSpec
 import sqs4s.api.SqsConfig
 import sqs4s.api.errors.AwsSqsError
@@ -12,6 +13,7 @@ import sqs4s.auth.Credentials
 import scala.concurrent.duration._
 
 class DeleteMessageBatchItSpec extends IOSpec {
+  val logger = Slf4jLogger.getLogger[IO]
 
   val testCurrentMillis = 1586623258684L
 
@@ -42,7 +44,8 @@ class DeleteMessageBatchItSpec extends IOSpec {
               ),
               cred,
               "eu-west-1"
-            )
+            ),
+            logger
           )
     }
       .attempt

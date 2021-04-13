@@ -7,6 +7,7 @@ import fs2.Stream
 import fs2.concurrent.SignallingRef
 import org.http4s.Uri
 import org.http4s.client.blaze.BlazeClientBuilder
+import org.typelevel.log4cats.slf4j.Slf4jLogger
 import sqs4s.IOSpec
 import sqs4s.api.lo.DeleteMessageBatch
 import sqs4s.api.{SqsConfig, _}
@@ -16,6 +17,8 @@ import scala.concurrent.duration._
 
 class ClientItSpec extends IOSpec {
   override implicit lazy val testClock: Clock[IO] = timer.clock
+
+  val logger = Slf4jLogger.getLogger[IO]
 
   val awsAccountId = sys.env("AWS_ACCOUNT_ID")
   val sqsRootEndpoint =
@@ -35,11 +38,11 @@ class ClientItSpec extends IOSpec {
       client <- clientResource
       cred <- Credentials.chain(client)
       rootConfig = SqsConfig(sqsRootEndpoint, cred, region)
-      consumerProducer <- TestUtil.queueResource[IO](client, rootConfig).map {
+      consumerProducer <- TestUtil.queueResource[IO](client, rootConfig, logger).map {
         queue =>
           val uri = Uri.unsafeFromString(queue.queueUrl)
           val conf = SqsConfig(uri, cred, region)
-          val producer = SqsProducer[TestMessage](client, conf)
+          val producer = SqsProducer[TestMessage](client, conf, logger)
           val consumer = SqsConsumer[TestMessage](
             client,
             ConsumerConfig(
@@ -48,7 +51,8 @@ class ClientItSpec extends IOSpec {
               conf.region,
               waitTimeSeconds = Some(1),
               pollingRate = 2.seconds
-            )
+            ),
+            logger
           )
           (producer, consumer)
       }
@@ -74,11 +78,11 @@ class ClientItSpec extends IOSpec {
     val input = TestMessage.arbStream(numOfMsgs).compile.toList.unsafeRunSync()
     val inputStream = Stream[IO, TestMessage](input: _*)
 
-    val ref = Resource.liftF(Ref.of[IO, List[TestMessage]](List.empty))
+    val ref = Resource.eval(Ref.of[IO, List[TestMessage]](List.empty))
 
     val resources = for {
       r <- ref
-      interrupter <- Resource.liftF(SignallingRef[IO, Boolean](false))
+      interrupter <- Resource.eval(SignallingRef[IO, Boolean](false))
       producerConsumer <- producerConsumerResource
     } yield (r, interrupter, producerConsumer._1, producerConsumer._2)
 
@@ -158,8 +162,8 @@ class ClientItSpec extends IOSpec {
     val inputStream = Stream[IO, TestMessage](input: _*)
 
     val resources = for {
-      ref <- Resource.liftF(Ref.of[IO, List[TestMessage]](List.empty))
-      interrupter <- Resource.liftF(SignallingRef[IO, Boolean](false))
+      ref <- Resource.eval(Ref.of[IO, List[TestMessage]](List.empty))
+      interrupter <- Resource.eval(SignallingRef[IO, Boolean](false))
       producerConsumer <- producerConsumerResource
     } yield (ref, interrupter, producerConsumer._1, producerConsumer._2)
 

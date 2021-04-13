@@ -1,6 +1,6 @@
 package sqs4s.auth
 
-import cats.implicits._
+import cats.syntax.all._
 import cats.effect.Sync
 import sqs4s.auth.errors.{NoEnvironmentVariablesFound, NoSystemPropertiesFound}
 
