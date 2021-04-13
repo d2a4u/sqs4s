@@ -3,22 +3,26 @@ package sqs4s.api.lo
 import cats.effect.{Clock, IO}
 import org.http4s.Uri
 import org.http4s.implicits._
+import org.typelevel.log4cats.slf4j.Slf4jLogger
 import sqs4s.IOSpec
+import sqs4s.auth.Credentials
+import sqs4s.api.SqsConfig
 import sqs4s.api.errors.UnexpectedResponseError
-import sqs4s.api.{AwsAuth, SqsSettings}
 
 import scala.concurrent.duration.TimeUnit
 import scala.xml.XML
 
 class DeleteMessageSpec extends IOSpec {
+  val logger = Slf4jLogger.getLogger[IO]
 
   val testCurrentMillis = 1586623258684L
   val receiptHandle = ReceiptHandle("123456")
   val accessKey = "ACCESS_KEY"
   val secretKey = "SECRET_KEY"
-  val settings = SqsSettings(
+  val config = SqsConfig(
     Uri.unsafeFromString("https://queue.amazonaws.com/123456789012/MyQueue"),
-    AwsAuth(accessKey, secretKey, "eu-west-1")
+    credentials = Credentials.basic[IO](accessKey, secretKey),
+    region = "eu-west-1"
   )
 
   override implicit lazy val testClock: Clock[IO] = new Clock[IO] {
@@ -31,7 +35,9 @@ class DeleteMessageSpec extends IOSpec {
 
   it should "create correct request" in {
     val request =
-      DeleteMessage[IO](receiptHandle).mkRequest(settings).unsafeRunSync()
+      DeleteMessage[IO](receiptHandle)
+        .mkRequest(config, logger)
+        .unsafeRunSync()
     val params = request.uri.query.params
     params.get("Action") shouldEqual Some("DeleteMessage")
     params.contains("Version") shouldEqual true

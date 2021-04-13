@@ -2,16 +2,15 @@ package sqs4s.auth
 
 import java.time.Instant
 
-import cats.implicits._
-import io.circe.syntax._
 import cats.effect.Sync
+import cats.syntax.all._
 import io.circe.Decoder
 import org.http4s.EntityDecoder
 import org.http4s.circe.CirceEntityDecoder.circeEntityDecoder
 
 import scala.util.Try
 
-private[sqs4s] case class CredentialResponse(
+private[sqs4s] final case class CredentialResponse(
   accessKeyId: String,
   secretAccessKey: String,
   token: String,

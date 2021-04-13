@@ -1,15 +1,15 @@
 package sqs4s.auth
 
 import cats.Applicative
-import cats.effect.{Clock, Concurrent, Resource, Sync, Timer}
-import cats.implicits._
+import cats.effect.{Concurrent, Resource, Sync, Timer}
+import cats.syntax.all._
 import fs2._
 import org.http4s.Method.{GET, PUT}
 import org.http4s.circe.CirceEntityDecoder._
 import org.http4s.client.Client
 import org.http4s.client.dsl.Http4sClientDsl
 import org.http4s.client.middleware.FollowRedirect
-import org.http4s.implicits._
+import org.http4s.syntax.all._
 import org.http4s.{Header, Response, Status, Uri}
 import sqs4s.auth.errors._
 
@@ -24,10 +24,10 @@ sealed trait Credential {
   def secretKey: String
 }
 
-case class BasicCredential(accessKey: String, secretKey: String)
+final case class BasicCredential(accessKey: String, secretKey: String)
     extends Credential
 
-case class TemporarySecurityCredential(
+final case class TemporarySecurityCredential(
   accessKey: String,
   secretKey: String,
   sessionToken: String
@@ -71,7 +71,7 @@ object Credentials {
     * @tparam F an effect which represents the side effects
     * @return
     */
-  def chain[F[_]: Concurrent: Clock: Timer](
+  def chain[F[_]: Concurrent: Timer](
     client: Client[F],
     ttl: FiniteDuration = 6.hours,
     refreshBefore: FiniteDuration = 5.minutes
@@ -84,12 +84,12 @@ object Credentials {
     val tryAllInOrder = env orElse sys orElse container orElse instance
 
     tryAllInOrder.handleErrorWith { _ =>
-      Resource.liftF(Sync[F].raiseError[Credentials[F]](NoValidAuthMethodError))
+      Resource.eval(NoValidAuthMethodError.raiseError)
     }
   }
 
   def envVar[F[_]: Sync]: Resource[F, Credentials[F]] =
-    Resource.liftF {
+    Resource.eval {
       val ACCESS_KEY_ENV_VAR = "AWS_ACCESS_KEY_ID"
       val ALTERNATE_ACCESS_KEY_ENV_VAR = "AWS_ACCESS_KEY"
 
@@ -130,7 +130,7 @@ object Credentials {
     }
 
   def sysProp[F[_]: Sync]: Resource[F, Credentials[F]] =
-    Resource.liftF {
+    Resource.eval {
       val ACCESS_KEY_SYSTEM_PROPERTY = "aws.accessKeyId"
       val SECRET_KEY_SYSTEM_PROPERTY = "aws.secretKey"
       val SESSION_TOKEN_SYSTEM_PROPERTY = "aws.sessionToken"
@@ -161,7 +161,7 @@ object Credentials {
       }
     }
 
-  def containerMetadata[F[_]: Concurrent: Clock: Timer](
+  def containerMetadata[F[_]: Concurrent: Timer](
     client: Client[F],
     ttl: FiniteDuration = 6.hours,
     refreshBefore: FiniteDuration = 5.minutes,
@@ -201,7 +201,7 @@ object Credentials {
     * @tparam F an effect which represents the side effects
     * @return a Resource of TemporarySecurityCredential
     */
-  def instanceMetadata[F[_]: Concurrent: Clock: Timer](
+  def instanceMetadata[F[_]: Concurrent: Timer](
     client: Client[F],
     ttl: FiniteDuration = 6.hours,
     refreshBefore: FiniteDuration = 5.minutes,
@@ -253,12 +253,12 @@ object Credentials {
       }
     }
 
-  private def temporaryCredentials[F[_]: Concurrent: Clock: Timer](
+  private def temporaryCredentials[F[_]: Concurrent: Timer](
     refresh: F[CredentialResponse],
     ttl: FiniteDuration,
     refreshBefore: FiniteDuration
   ): Resource[F, Credentials[F]] =
-    Resource.liftF {
+    Resource.eval {
       refresh.map { init =>
         Stream
           .repeatEval(refresh)

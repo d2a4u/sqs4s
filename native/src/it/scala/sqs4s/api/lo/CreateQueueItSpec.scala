@@ -3,6 +3,7 @@ package sqs4s.api.lo
 import cats.effect.{Clock, IO}
 import org.http4s.Uri
 import org.http4s.client.blaze.BlazeClientBuilder
+import org.typelevel.log4cats.slf4j.Slf4jLogger
 import sqs4s.IOSpec
 import sqs4s.api.SqsConfig
 import sqs4s.api.errors.AwsSqsError
@@ -11,6 +12,7 @@ import sqs4s.auth.Credentials
 import scala.concurrent.duration.TimeUnit
 
 class CreateQueueItSpec extends IOSpec {
+  val logger = Slf4jLogger.getLogger[IO]
 
   val testCurrentMillis = 1586623258684L
   val queueUrl = "https://queue.amazonaws.com/123456789012/MyQueue"
@@ -32,7 +34,7 @@ class CreateQueueItSpec extends IOSpec {
     resources.use {
       case (client, cred) =>
         val config = SqsConfig(Uri.unsafeFromString(""), cred, "eu-west-1")
-        CreateQueue[IO]("test", sqsEndpoint).runWith(client, config)
+        CreateQueue[IO]("test", sqsEndpoint).runWith(client, config, logger)
     }.attempt
       .unsafeRunSync()
       .swap

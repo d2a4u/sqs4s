@@ -4,23 +4,27 @@ import cats.effect.{Clock, IO}
 import fs2.Chunk
 import org.http4s.Uri
 import org.http4s.implicits._
+import org.typelevel.log4cats.slf4j.Slf4jLogger
 import sqs4s.IOSpec
+import sqs4s.auth.Credentials
+import sqs4s.api.SqsConfig
 import sqs4s.api.errors.UnexpectedResponseError
-import sqs4s.api.{AwsAuth, SqsSettings}
 import sqs4s.serialization.instances._
 
 import scala.concurrent.duration._
 import scala.xml.XML
 
 class SendMessageBatchSpec extends IOSpec {
+  val logger = Slf4jLogger.getLogger[IO]
 
   val testCurrentMillis = 1586623258684L
   val receiptHandle = "123456"
   val accessKey = "ACCESS_KEY"
   val secretKey = "SECRET_KEY"
-  val settings = SqsSettings(
+  val config = SqsConfig(
     Uri.unsafeFromString("https://queue.amazonaws.com/123456789012/MyQueue"),
-    AwsAuth(accessKey, secretKey, "eu-west-1")
+    credentials = Credentials.basic[IO](accessKey, secretKey),
+    region = "eu-west-1"
   )
   val attr = Map("foo" -> "1", "bar" -> "2")
   val batch = Chunk(
@@ -53,7 +57,7 @@ class SendMessageBatchSpec extends IOSpec {
   it should "create correct request" in {
     val request =
       SendMessageBatch[IO, String](batch)
-        .mkRequest(settings)
+        .mkRequest(config, logger)
         .unsafeRunSync()
     val params = request.uri.query.params
     params("Action") shouldEqual "SendMessageBatch"

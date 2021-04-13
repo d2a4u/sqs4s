@@ -3,6 +3,7 @@ package sqs4s.api.lo
 import cats.effect.{Clock, IO}
 import org.http4s.Uri
 import org.http4s.client.blaze.BlazeClientBuilder
+import org.typelevel.log4cats.slf4j.Slf4jLogger
 import sqs4s.IOSpec
 import sqs4s.api.SqsConfig
 import sqs4s.api.errors.AwsSqsError
@@ -11,6 +12,7 @@ import sqs4s.auth.Credentials
 import scala.concurrent.duration.TimeUnit
 
 class DeleteMessageItSpec extends IOSpec {
+  val logger = Slf4jLogger.getLogger[IO]
 
   val testCurrentMillis = 1586623258684L
   val receiptHandle = ReceiptHandle("123456")
@@ -38,7 +40,8 @@ class DeleteMessageItSpec extends IOSpec {
             ),
             cred,
             "eu-west-1"
-          )
+          ),
+          logger
         )
     }.attempt
       .unsafeRunSync()
