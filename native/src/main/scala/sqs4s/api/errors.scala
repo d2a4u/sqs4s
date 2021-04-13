@@ -2,7 +2,7 @@ package sqs4s.api
 
 import cats.Show
 import cats.data.NonEmptyList
-import cats.implicits._
+import cats.syntax.all._
 import sqs4s.api.lo.DeleteMessageBatch
 
 import scala.xml.Elem
@@ -12,14 +12,14 @@ object errors {
 
   sealed trait SqsError extends Exception
 
-  case class RetriableServerError(raw: String) extends SqsError
+  final case class RetriableServerError(raw: String) extends SqsError
 
-  case class BasicAwsSqsError(raw: Elem) extends SqsError {
+  final case class BasicAwsSqsError(raw: Elem) extends SqsError {
     override def getMessage: String =
       s"Raw: ${raw.toString}"
   }
 
-  case class UnexpectedResponseError(elemName: String, raw: Elem)
+  final case class UnexpectedResponseError(elemName: String, raw: Elem)
       extends SqsError {
     override def getMessage: String =
       s"""Expect XML element: $elemName
@@ -27,12 +27,12 @@ object errors {
      """.stripMargin
   }
 
-  case object MessageTooLarge extends SqsError {
+  final case object MessageTooLarge extends SqsError {
     override def getMessage: String =
       "Maximum SQS message size is 256KB or maximum batch of 10 entries"
   }
 
-  case class AwsSqsError(
+  final case class AwsSqsError(
     `type`: String,
     code: String,
     message: String,
@@ -45,11 +45,11 @@ object errors {
          |Message: $message""".stripMargin
   }
 
-  case class DeleteMessageBatchErrors(
+  final case class DeleteMessageBatchErrors(
     errors: NonEmptyList[DeleteMessageBatch.Error]
   ) extends SqsError
 
-  case class ExpiredTokenError(message: String, requestId: String)
+  final case class ExpiredTokenError(message: String, requestId: String)
       extends SqsError {
     override def getMessage: String = message
   }

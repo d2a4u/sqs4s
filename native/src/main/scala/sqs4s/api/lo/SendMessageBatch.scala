@@ -1,9 +1,10 @@
 package sqs4s.api.lo
 
 import cats.effect.{Clock, Sync, Timer}
-import cats.implicits._
+import cats.syntax.all._
 import fs2.Chunk
 import org.http4s.Request
+import org.typelevel.log4cats.Logger
 import sqs4s.api.SqsConfig
 import sqs4s.api.errors.UnexpectedResponseError
 import sqs4s.serialization.SqsSerializer
@@ -11,7 +12,7 @@ import sqs4s.serialization.SqsSerializer
 import scala.concurrent.duration.Duration
 import scala.xml.Elem
 
-case class SendMessageBatch[F[_]: Sync: Clock: Timer, T](
+final case class SendMessageBatch[F[_]: Sync: Clock: Timer, T](
   messages: Chunk[SendMessageBatch.Entry[T]]
 )(implicit serializer: SqsSerializer[T])
     extends Action[F, SendMessageBatch.Result] {
@@ -79,7 +80,7 @@ case class SendMessageBatch[F[_]: Sync: Clock: Timer, T](
       )
     }
 
-  def mkRequest(config: SqsConfig[F]): F[Request[F]] = {
+  def mkRequest(config: SqsConfig[F], logger: Logger[F]): F[Request[F]] = {
     val params =
       List("Action" -> "SendMessageBatch") ++ version ++ entries
 
@@ -88,7 +89,7 @@ case class SendMessageBatch[F[_]: Sync: Clock: Timer, T](
       config.queue,
       config.credentials,
       config.region
-    ).render
+    ).render(logger)
   }
 
   def parseResponse(response: Elem): F[SendMessageBatch.Result] = {
@@ -115,7 +116,7 @@ case class SendMessageBatch[F[_]: Sync: Clock: Timer, T](
 }
 
 object SendMessageBatch {
-  case class Entry[T](
+  final case class Entry[T](
     id: String,
     message: T,
     attributes: Map[String, String] = Map.empty,
@@ -124,13 +125,13 @@ object SendMessageBatch {
     groupId: Option[String] = None
   )
 
-  case class Result(
+  final case class Result(
     requestId: String,
     successes: List[Success],
     errors: List[Error]
   )
 
-  case class Success(
+  final case class Success(
     id: String,
     messageBodyMd5: String,
     messageAttributesMd5: Option[String],
@@ -138,7 +139,7 @@ object SendMessageBatch {
     sequenceNumber: Option[BigInt]
   )
 
-  case class Error(
+  final case class Error(
     id: String,
     code: String,
     message: Option[String],

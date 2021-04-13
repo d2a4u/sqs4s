@@ -1,51 +1,37 @@
-package sqs4s.api.lo
+package sqs4s.api
+package lo
 
 import cats.MonadError
 import cats.effect.{Sync, Timer}
-import cats.implicits._
+import cats.syntax.all._
 import fs2.Chunk
 import org.http4s.client.Client
 import org.http4s.scalaxml._
 import org.http4s.{Request, Response, Status}
+import org.typelevel.log4cats.Logger
 import sqs4s.api.errors._
-import sqs4s.api.{SqsConfig, SqsSettings}
-import sqs4s.auth.Credentials
 import sqs4s.auth.errors.UnauthorizedAuthError
 
 import scala.concurrent.duration._
 import scala.xml.{Elem, XML}
 
 abstract class Action[F[_]: Sync: Timer, T] {
-
   val version = List("Version" -> "2012-11-05")
 
-  @deprecated("use SqsConfig instead", "1.1.0")
-  def runWith(client: Client[F], settings: SqsSettings): F[T] =
-    mkRequest(settings)
-      .flatMap(req => client.expectOr[Elem](req)(parseError))
-      .flatMap(parseResponse)
-
-  @deprecated("use SqsConfig instead", "1.1.0")
-  def mkRequest(settings: SqsSettings): F[Request[F]] =
-    mkRequest(SqsConfig[F](
-      settings.queue,
-      Credentials.basic[F](
-        settings.auth.accessKey,
-        settings.auth.secretKey
-      ),
-      settings.auth.region
-    ))
-
-  def runWith(client: Client[F], config: SqsConfig[F]): F[T] = {
+  def runWith(
+    client: Client[F],
+    config: SqsConfig[F],
+    logger: Logger[F]
+  ): F[T] = {
     val reqToRes =
-      mkRequest(config)
+      mkRequest(config, logger)
         .flatMap(req => client.expectOr[Elem](req)(parseError))
         .flatMap(parseResponse)
 
     withRetry(reqToRes)
   }
 
-  def mkRequest(config: SqsConfig[F]): F[Request[F]]
+  def mkRequest(config: SqsConfig[F], logger: Logger[F]): F[Request[F]]
 
   def parseResponse(response: Elem): F[T]
 

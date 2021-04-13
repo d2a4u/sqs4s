@@ -1,45 +1,50 @@
 import sbt.Keys.organization
 import sbt.addCompilerPlugin
 
+val catsVersion = "2.5.0"
+val catsEffectVersion = "2.4.1"
 val circeVersion = "0.13.0"
-val fs2Version = "2.4.2"
-val http4sVersion = "0.21.7"
+val fs2Version = "2.5.4"
+val http4sVersion = "0.21.22"
+val log4catsVersion = "1.2.2"
 val logbackVersion = "1.2.3"
 
-val circe = Seq(
-  "io.circe" %% "circe-core",
-  "io.circe" %% "circe-generic",
-  "io.circe" %% "circe-parser"
-).map(_ % circeVersion)
-
 lazy val dependencies = Seq(
+  "io.circe" %% "circe-core" % circeVersion,
+  "org.http4s" %% "http4s-core" % http4sVersion,
   "org.http4s" %% "http4s-client" % http4sVersion,
   "org.http4s" %% "http4s-scala-xml" % http4sVersion,
   "org.http4s" %% "http4s-circe" % http4sVersion,
-  "org.scala-lang.modules" %% "scala-parser-combinators" % "1.1.2",
-  "io.chrisdavenport" %% "log4cats-slf4j" % "1.1.1",
+  "org.typelevel" %% "cats-core" % catsVersion,
+  "org.typelevel" %% "cats-effect" % catsEffectVersion,
+  "org.typelevel" %% "log4cats-core" % log4catsVersion,
+  "org.typelevel" %% "log4cats-slf4j" % log4catsVersion,
   "co.fs2" %% "fs2-core" % fs2Version,
-  "javax.xml.bind" % "jaxb-api" % "2.4.0-b180830.0359",
-  "org.scala-lang.modules" %% "scala-collection-compat" % "2.4.2"
+  "org.scala-lang.modules" %% "scala-collection-compat" % "2.4.3",
+  "org.scala-lang.modules" %% "scala-xml" % "1.3.0",
+  "javax.xml.bind" % "jaxb-api" % "2.4.0-b180830.0359"
 )
 
 lazy val testDependencies = Seq(
+  "io.circe" %% "circe-generic" % circeVersion,
+  "io.circe" %% "circe-parser" % circeVersion,
   "org.http4s" %% "http4s-blaze-client" % http4sVersion,
-  "org.scalatest" %% "scalatest" % "3.2.0",
   "ch.qos.logback" % "logback-classic" % logbackVersion,
+  "org.scalatest" %% "scalatest" % "3.2.0",
   "org.scalacheck" %% "scalacheck" % "1.14.3"
-) ++ circe
+)
+
+ThisBuild / organization := "io.github.d2a4u"
 
 lazy val commonSettings = Seq(
-  organization in ThisBuild := "io.github.d2a4u",
   scalaVersion := "2.13.5",
   crossScalaVersions := Seq("2.12.13", "2.13.5"),
-  parallelExecution in Test := false,
+  Test / parallelExecution := false,
   scalafmtOnCompile := true,
   licenses += ("MIT", url("http://opensource.org/licenses/MIT")),
   homepage := Some(url("https://d2a4u.github.io/sqs4s/")),
   publishMavenStyle := true,
-  publishArtifact in Test := false,
+  Test / publishArtifact := false,
   pomIncludeRepository := { _ => false },
   scmInfo := Some(
     ScmInfo(
@@ -57,7 +62,7 @@ lazy val commonSettings = Seq(
   ),
   pgpPublicRing := file("/tmp/local.pubring.asc"),
   pgpSecretRing := file("/tmp/local.secring.asc"),
-  releaseEarlyWith in Global := SonatypePublisher,
+  Global / releaseEarlyWith := SonatypePublisher,
   sonatypeProfileName := "io.github.d2a4u",
   releaseEarlyEnableSyncToMaven := true,
   addCompilerPlugin(
@@ -71,13 +76,13 @@ lazy val native = project
   .configs(ItTest)
   .settings(
     inConfig(ItTest)(Defaults.testSettings),
-    testOptions in ItTest += Tests.Argument("-oD")
+    ItTest / testOptions += Tests.Argument("-oD")
   )
   .settings(
     name := "sqs4s-native",
     libraryDependencies ++= dependencies ++ testDependencies.map(_ % "it,test"),
-    scalacOptions in Test ~= filterConsoleScalacOptions,
-    scalacOptions in Compile ~= filterConsoleScalacOptions,
+    Compile / scalacOptions ~= filterConsoleScalacOptions,
+    Test / scalacOptions ~= filterConsoleScalacOptions,
     commonSettings
   )
 

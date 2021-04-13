@@ -3,23 +3,27 @@ package sqs4s.api.lo
 import cats.effect.{Clock, IO}
 import org.http4s.Uri
 import org.http4s.implicits._
+import org.typelevel.log4cats.slf4j.Slf4jLogger
 import sqs4s.IOSpec
+import sqs4s.auth.Credentials
+import sqs4s.api.SqsConfig
 import sqs4s.api.errors.UnexpectedResponseError
-import sqs4s.api.{AwsAuth, SqsSettings}
 
 import scala.concurrent.duration.TimeUnit
 import scala.xml.XML
 
 class CreateQueueSpec extends IOSpec {
+  val logger = Slf4jLogger.getLogger[IO]
 
   val testCurrentMillis = 1586623258684L
   val queueUrl = "https://queue.amazonaws.com/123456789012/MyQueue"
   val accessKey = "ACCESS_KEY"
   val secretKey = "SECRET_KEY"
   val sqsEndpoint = Uri.unsafeFromString("https://sqs.eu-west-1.amazonaws.com/")
-  val settings = SqsSettings(
-    Uri.unsafeFromString(""),
-    AwsAuth(accessKey, secretKey, "eu-west-1")
+  val config = SqsConfig(
+    Uri.unsafeFromString("https://queue.amazonaws.com/123456789012/MyQueue"),
+    credentials = Credentials.basic[IO](accessKey, secretKey),
+    region = "eu-west-1"
   )
 
   override implicit lazy val testClock: Clock[IO] = new Clock[IO] {
@@ -32,7 +36,9 @@ class CreateQueueSpec extends IOSpec {
 
   it should "create correct request" in {
     val request =
-      CreateQueue[IO]("test", sqsEndpoint).mkRequest(settings).unsafeRunSync()
+      CreateQueue[IO]("test", sqsEndpoint)
+        .mkRequest(config, logger)
+        .unsafeRunSync()
     val params = request.uri.query.params
     params.get("Action") shouldEqual Some("CreateQueue")
     params.get("QueueName") shouldEqual Some("test")
