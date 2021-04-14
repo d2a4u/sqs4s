@@ -1,6 +1,6 @@
 package sqs4s.api.lo
 
-import cats.effect.{Clock, Sync, Timer}
+import cats.effect.Async
 import cats.syntax.all._
 import org.http4s.Request
 import org.typelevel.log4cats.Logger
@@ -11,7 +11,7 @@ import sqs4s.serialization.SqsSerializer
 import scala.concurrent.duration.Duration
 import scala.xml.Elem
 
-final case class SendMessage[F[_]: Sync: Clock: Timer, T](
+final case class SendMessage[F[_]: Async, T](
   message: T,
   attributes: Map[String, String] = Map.empty,
   delay: Option[Duration] = None,
@@ -21,25 +21,20 @@ final case class SendMessage[F[_]: Sync: Clock: Timer, T](
     extends Action[F, SendMessage.Result] {
 
   def mkRequest(config: SqsConfig[F], logger: Logger[F]): F[Request[F]] = {
-    val params = {
-      val queries = List(
-        "Action" -> "SendMessage",
-        "MessageBody" -> serializer.serialize(message)
-      ) ++ version ++ (
-        dedupId.map(ddid => List("MessageDeduplicationId" -> ddid)) |+|
-          groupId.map(gid => List("MessageGroupId" -> gid)) |+|
-          delay.map(d => List("DelaySeconds" -> d.toSeconds.toString))
-      ).getOrElse(List.empty)
-
-      attributes.zipWithIndex.toList
-        .flatMap {
-          case ((key, value), index) =>
-            List(
-              s"MessageAttribute.${index + 1}.Name" -> key,
-              s"MessageAttribute.${index + 1}.Value" -> value
-            )
-        } ++ queries
-    }
+    val params = attributes.zipWithIndex.toList.flatMap {
+      case ((key, value), index) =>
+        List(
+          s"MessageAttribute.${index + 1}.Name" -> key,
+          s"MessageAttribute.${index + 1}.Value" -> value
+        )
+    } ++ List(
+      Some("Action" -> "SendMessage"),
+      Some("MessageBody" -> serializer.serialize(message)),
+      version,
+      dedupId.map(ddid => "MessageDeduplicationId" -> ddid),
+      groupId.map(gid => "MessageGroupId" -> gid),
+      delay.map(d => "DelaySeconds" -> d.toSeconds.toString)
+    ).flatten
 
     SignedRequest.post[F](
       params,
@@ -59,16 +54,14 @@ final case class SendMessage[F[_]: Sync: Clock: Timer, T](
       _ <- mid.nonEmpty.guard[Option]
       _ <- rid.nonEmpty.guard[Option]
     } yield {
-      SendMessage
-        .Result(
-          md5MsgBody,
-          md5MsgAttr.nonEmpty.guard[Option].as(md5MsgAttr.text),
-          mid,
-          rid
-        )
-        .pure[F]
+      SendMessage.Result(
+        md5MsgBody,
+        md5MsgAttr.nonEmpty.guard[Option].as(md5MsgAttr.text),
+        mid,
+        rid
+      ).pure[F]
     }).getOrElse(
-      Sync[F].raiseError(
+      Async[F].raiseError(
         UnexpectedResponseError(
           "MD5OfMessageBody, MD5OfMessageAttributes, MessageId, RequestId",
           response

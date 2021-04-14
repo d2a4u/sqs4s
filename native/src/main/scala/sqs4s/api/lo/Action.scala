@@ -2,7 +2,7 @@ package sqs4s.api
 package lo
 
 import cats.MonadError
-import cats.effect.{Sync, Timer}
+import cats.effect.Async
 import cats.syntax.all._
 import fs2.Chunk
 import org.http4s.client.Client
@@ -15,8 +15,8 @@ import sqs4s.auth.errors.UnauthorizedAuthError
 import scala.concurrent.duration._
 import scala.xml.{Elem, XML}
 
-abstract class Action[F[_]: Sync: Timer, T] {
-  val version = List("Version" -> "2012-11-05")
+abstract class Action[F[_]: Async, T] {
+  val version = Some("Version" -> "2012-11-05")
 
   def runWith(
     client: Client[F],
@@ -46,7 +46,7 @@ abstract class Action[F[_]: Sync: Timer, T] {
     } else {
       for {
         bytes <- error.body.compile.to(Chunk)
-        xml <- Sync[F].delay(XML.loadString(new String(bytes.toArray)))
+        xml <- Async[F].delay(XML.loadString(new String(bytes.toArray)))
       } yield SqsError.fromXml(xml)
     }
   }

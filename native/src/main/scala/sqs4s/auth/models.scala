@@ -2,11 +2,11 @@ package sqs4s.auth
 
 import java.time.Instant
 
-import cats.effect.Sync
+import cats.effect.Concurrent
 import cats.syntax.all._
 import io.circe.Decoder
 import org.http4s.EntityDecoder
-import org.http4s.circe.CirceEntityDecoder.circeEntityDecoder
+import org.http4s.circe.jsonOf
 
 import scala.util.Try
 
@@ -36,7 +36,7 @@ object CredentialResponse {
       ).mapN(CredentialResponse.apply)
   }
 
-  implicit def entityDecoder[F[_]: Sync]
+  implicit def entityDecoder[F[_]: Concurrent]
     : EntityDecoder[F, List[CredentialResponse]] =
-    circeEntityDecoder[F, List[CredentialResponse]]
+    jsonOf
 }

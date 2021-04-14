@@ -1,6 +1,6 @@
 package sqs4s.api.lo
 
-import cats.effect.{Clock, Sync, Timer}
+import cats.effect.Async
 import cats.syntax.all._
 import org.http4s.Request
 import org.typelevel.log4cats.Logger
@@ -9,29 +9,23 @@ import sqs4s.api.errors.UnexpectedResponseError
 
 import scala.xml.Elem
 
-final case class DeleteMessageBatch[F[_]: Sync: Clock: Timer](
+final case class DeleteMessageBatch[F[_]: Async](
   entries: Seq[DeleteMessageBatch.Entry]
 ) extends Action[F, DeleteMessageBatch.Result] {
 
-  private val receiptHandles = entries
-    .map { entry =>
-      List("Id" -> entry.id, "ReceiptHandle" -> entry.receiptHandle.value)
-    }
-    .zipWithIndex
-    .toList
-    .flatMap {
-      case (flattenEntry, index) =>
-        flattenEntry.map {
-          case (key, value) =>
-            s"DeleteMessageBatchRequestEntry.${index + 1}.$key" -> value
-        }
-    }
+  private val receiptHandles = entries.iterator.zipWithIndex.flatMap {
+    case (entry, index) =>
+      List(
+        s"DeleteMessageBatchRequestEntry.${index + 1}.Id" -> entry.id,
+        s"DeleteMessageBatchRequestEntry.${index + 1}.ReceiptHandle" -> entry.receiptHandle.value
+      )
+  }.toList
 
   def mkRequest(config: SqsConfig[F], logger: Logger[F]): F[Request[F]] = {
-    val params =
-      List(
-        "Action" -> "DeleteMessageBatch"
-      ) ++ version ++ receiptHandles
+    val params = receiptHandles ++ List(
+      Some("Action" -> "DeleteMessageBatch"),
+      version
+    ).flatten
 
     SignedRequest.post[F](
       params,
@@ -65,7 +59,7 @@ final case class DeleteMessageBatch[F[_]: Sync: Clock: Timer](
       (response \\ "BatchResultErrorEntry").isEmpty &&
       (response \\ "DeleteMessageBatchResultEntry").isEmpty
     ) {
-      Sync[F].raiseError(
+      Async[F].raiseError(
         UnexpectedResponseError(
           "BatchResultErrorEntry, DeleteMessageBatchResultEntry",
           response

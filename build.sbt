@@ -2,14 +2,15 @@ import sbt.Keys.organization
 import sbt.addCompilerPlugin
 
 val catsVersion = "2.5.0"
-val catsEffectVersion = "2.4.1"
+val catsEffectVersion = "3.0.2"
 val circeVersion = "0.13.0"
-val fs2Version = "2.5.4"
-val http4sVersion = "0.21.22"
-val log4catsVersion = "1.2.2"
+val fs2Version = "3.0.1"
+val http4sVersion = "1.0.0-M21"
+val log4catsVersion = "2.0.1"
 val logbackVersion = "1.2.3"
 
 lazy val dependencies = Seq(
+  "co.fs2" %% "fs2-core" % fs2Version,
   "io.circe" %% "circe-core" % circeVersion,
   "org.http4s" %% "http4s-core" % http4sVersion,
   "org.http4s" %% "http4s-client" % http4sVersion,
@@ -19,9 +20,9 @@ lazy val dependencies = Seq(
   "org.typelevel" %% "cats-effect" % catsEffectVersion,
   "org.typelevel" %% "log4cats-core" % log4catsVersion,
   "org.typelevel" %% "log4cats-slf4j" % log4catsVersion,
-  "co.fs2" %% "fs2-core" % fs2Version,
+  "org.typelevel" %% "case-insensitive" % "1.1.2",
   "org.scala-lang.modules" %% "scala-collection-compat" % "2.4.3",
-  "org.scala-lang.modules" %% "scala-xml" % "1.3.0",
+  "org.scala-lang.modules" %% "scala-xml" % "2.0.0-RC1",
   "javax.xml.bind" % "jaxb-api" % "2.4.0-b180830.0359"
 )
 
