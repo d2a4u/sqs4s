@@ -1,6 +1,6 @@
 package sqs4s.api.lo
 
-import cats.effect.{Clock, Sync, Timer}
+import cats.effect.Async
 import cats.syntax.all._
 import fs2.Chunk
 import org.http4s.Request
@@ -12,41 +12,32 @@ import sqs4s.serialization.SqsSerializer
 import scala.concurrent.duration.Duration
 import scala.xml.Elem
 
-final case class SendMessageBatch[F[_]: Sync: Clock: Timer, T](
+final case class SendMessageBatch[F[_]: Async, T](
   messages: Chunk[SendMessageBatch.Entry[T]]
 )(implicit serializer: SqsSerializer[T])
     extends Action[F, SendMessageBatch.Result] {
 
-  private val entries = messages
-    .map { entry =>
-      val flattenAttrs = entry.attributes.zipWithIndex.toList
-        .flatMap {
-          case ((key, value), index) =>
-            List(
-              s"MessageAttribute.${index + 1}.Name" -> key,
-              s"MessageAttribute.${index + 1}.Value" -> value
-            )
-        }
-      List(
-        "Id" -> entry.id,
-        "MessageBody" -> serializer.serialize(entry.message)
-      ) ++ entry.delay
-        .map(d => List("DelaySeconds" -> d.toSeconds.toString))
-        .getOrElse(List.empty) ++ entry.groupId
-        .map(gid => List("MessageGroupId" -> gid))
-        .getOrElse(List.empty) ++ entry.dedupId
-        .map(did => List("MessageDeduplicationId" -> did))
-        .getOrElse(List.empty) ++ flattenAttrs
-    }
-    .zipWithIndex
-    .toList
-    .flatMap {
-      case (flattenEntry, index) =>
-        flattenEntry.map {
-          case (key, value) =>
-            s"SendMessageBatchRequestEntry.${index + 1}.$key" -> value
-        }
-    }
+  private val entries = messages.map { entry =>
+    entry.attributes.zipWithIndex.toList.flatMap {
+      case ((key, value), index) =>
+        List(
+          s"MessageAttribute.${index + 1}.Name" -> key,
+          s"MessageAttribute.${index + 1}.Value" -> value
+        )
+    } ++ List(
+      Some("Id" -> entry.id),
+      Some("MessageBody" -> serializer.serialize(entry.message)),
+      entry.delay.map(d => "DelaySeconds" -> d.toSeconds.toString),
+      entry.groupId.map(gid => "MessageGroupId" -> gid),
+      entry.dedupId.map(did => "MessageDeduplicationId" -> did)
+    ).flatten
+  }.zipWithIndex.toList.flatMap {
+    case (flattenEntry, index) =>
+      flattenEntry.map {
+        case (key, value) =>
+          s"SendMessageBatchRequestEntry.${index + 1}.$key" -> value
+      }
+  }
 
   private def successesEntry(elem: Elem): List[SendMessageBatch.Success] =
     (elem \\ "SendMessageBatchResultEntry").toList.map { entry =>
@@ -97,7 +88,7 @@ final case class SendMessageBatch[F[_]: Sync: Clock: Timer, T](
       (response \\ "BatchResultErrorEntry").isEmpty &&
       (response \\ "SendMessageBatchResultEntry").isEmpty
     ) {
-      Sync[F].raiseError(
+      Async[F].raiseError(
         UnexpectedResponseError(
           "BatchResultErrorEntry, SendMessageBatchResultEntry",
           response

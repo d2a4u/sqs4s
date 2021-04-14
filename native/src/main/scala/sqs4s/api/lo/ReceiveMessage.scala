@@ -1,6 +1,6 @@
 package sqs4s.api.lo
 
-import cats.effect.{Clock, Sync, Timer}
+import cats.effect.Async
 import cats.syntax.all._
 import fs2.Chunk
 import org.http4s.Request
@@ -11,7 +11,7 @@ import sqs4s.serialization.SqsDeserializer
 
 import scala.xml.Elem
 
-final case class ReceiveMessage[F[_]: Sync: Clock: Timer, T](
+final case class ReceiveMessage[F[_]: Async, T](
   maxNumberOfMessages: Int = 10, // max 10 per sqs api doc
   visibilityTimeout: Int = 15,
   waitTimeSeconds: Option[Int] = None
@@ -20,13 +20,13 @@ final case class ReceiveMessage[F[_]: Sync: Clock: Timer, T](
 
   def mkRequest(config: SqsConfig[F], logger: Logger[F]): F[Request[F]] = {
     val params = List(
-      "Action" -> "ReceiveMessage",
-      "MaxNumberOfMessages" -> maxNumberOfMessages.toString,
-      "VisibilityTimeout" -> visibilityTimeout.toString,
-      "AttributeName" -> "All"
-    ) ++ version ++ waitTimeSeconds.toList.map(sec =>
-      "WaitTimeSeconds" -> sec.toString
-    )
+      Some("Action" -> "ReceiveMessage"),
+      Some("MaxNumberOfMessages" -> maxNumberOfMessages.toString),
+      Some("VisibilityTimeout" -> visibilityTimeout.toString),
+      Some("AttributeName" -> "All"),
+      version,
+      waitTimeSeconds.map(sec => "WaitTimeSeconds" -> sec.toString)
+    ).flatten
 
     SignedRequest.post[F](
       params,
@@ -47,7 +47,8 @@ final case class ReceiveMessage[F[_]: Sync: Clock: Timer, T](
           .toMap
         val mid = (msg \ "MessageId").text
         val handle = (msg \ "ReceiptHandle").text
-        handle.nonEmpty
+        handle
+          .nonEmpty
           .guard[Option]
           .as {
             decoder.deserialize(raw).map { t =>
@@ -62,7 +63,7 @@ final case class ReceiveMessage[F[_]: Sync: Clock: Timer, T](
             }
           }
           .getOrElse {
-            Sync[F].raiseError(
+            Async[F].raiseError(
               UnexpectedResponseError("ReceiptHandle", response)
             )
           }

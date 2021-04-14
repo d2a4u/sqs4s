@@ -1,7 +1,7 @@
 package sqs4s.auth
 
 import cats.Applicative
-import cats.effect.{Concurrent, Resource, Sync, Timer}
+import cats.effect.{Async, Sync, Resource, Temporal}
 import cats.syntax.all._
 import fs2._
 import org.http4s.Method.{GET, PUT}
@@ -11,6 +11,7 @@ import org.http4s.client.dsl.Http4sClientDsl
 import org.http4s.client.middleware.FollowRedirect
 import org.http4s.syntax.all._
 import org.http4s.{Header, Response, Status, Uri}
+import org.typelevel.ci.CIString
 import sqs4s.auth.errors._
 
 import scala.concurrent.duration._
@@ -71,7 +72,7 @@ object Credentials {
     * @tparam F an effect which represents the side effects
     * @return
     */
-  def chain[F[_]: Concurrent: Timer](
+  def chain[F[_]: Async](
     client: Client[F],
     ttl: FiniteDuration = 6.hours,
     refreshBefore: FiniteDuration = 5.minutes
@@ -161,7 +162,7 @@ object Credentials {
       }
     }
 
-  def containerMetadata[F[_]: Concurrent: Timer](
+  def containerMetadata[F[_]: Async](
     client: Client[F],
     ttl: FiniteDuration = 6.hours,
     refreshBefore: FiniteDuration = 5.minutes,
@@ -177,15 +178,11 @@ object Credentials {
         client
       }
 
-    val uriF = SystemF.env[F](RELATIVE_URI_ENV_VAR).flatMap {
-      path =>
-        //Static address to retrieve cred from within container per API doc: https://docs.aws.amazon.com/AmazonECS/latest/developerguide/task-iam-roles.html
-        Sync[F].fromEither(Uri.fromString(s"http://169.254.170.2$path"))
-    }
-
     val refresh: F[CredentialResponse] =
       for {
-        uri <- uriF
+        path <- SystemF.env[F](RELATIVE_URI_ENV_VAR)
+        //Static address to retrieve cred from within container per API doc: https://docs.aws.amazon.com/AmazonECS/latest/developerguide/task-iam-roles.html
+        uri <- Async[F].fromEither(Uri.fromString(s"http://169.254.170.2$path"))
         cred <- httpClient.expectOr[CredentialResponse](GET(uri))(onError)
       } yield cred
 
@@ -201,7 +198,7 @@ object Credentials {
     * @tparam F an effect which represents the side effects
     * @return a Resource of TemporarySecurityCredential
     */
-  def instanceMetadata[F[_]: Concurrent: Timer](
+  def instanceMetadata[F[_]: Temporal](
     client: Client[F],
     ttl: FiniteDuration = 6.hours,
     refreshBefore: FiniteDuration = 5.minutes,
@@ -216,8 +213,8 @@ object Credentials {
     val tokenEndpoint = awsLinkLocal / "latest" / "api" / "token"
     val credsEndpoint =
       awsLinkLocal / "latest" / "meta-data" / "iam" / "security-credentials"
-    val ttlHeader = "X-aws-ec2-metadata-token-ttl-seconds"
-    val tokenHeader = "X-aws-ec2-metadata-token"
+    val ttlHeader = CIString("X-aws-ec2-metadata-token-ttl-seconds")
+    val tokenHeader = CIString("X-aws-ec2-metadata-token")
     val httpClient =
       if (allowRedirect) {
         FollowRedirect[F](10)(client)
@@ -231,14 +228,11 @@ object Credentials {
         creds <- httpClient.expectOr[List[CredentialResponse]](
           GET(
             credsEndpoint,
-            Header(ttlHeader, ttl.toSeconds.toString),
-            Header(tokenHeader, token)
+            Header.Raw(name = ttlHeader, value = ttl.toSeconds.toString),
+            Header.Raw(name = tokenHeader, value = token)
           )
         )(onError)
-        cred <- Sync[F].fromOption(
-          creds.headOption,
-          NoInstanceProfileCredentialFound
-        )
+        cred <- creds.headOption.liftTo[F](NoInstanceProfileCredentialFound)
       } yield cred
 
     temporaryCredentials[F](refresh, ttl, refreshBefore)
@@ -253,7 +247,7 @@ object Credentials {
       }
     }
 
-  private def temporaryCredentials[F[_]: Concurrent: Timer](
+  private def temporaryCredentials[F[_]: Temporal](
     refresh: F[CredentialResponse],
     ttl: FiniteDuration,
     refreshBefore: FiniteDuration

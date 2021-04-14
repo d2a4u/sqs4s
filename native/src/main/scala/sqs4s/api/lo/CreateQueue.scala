@@ -1,6 +1,6 @@
 package sqs4s.api.lo
 
-import cats.effect.{Clock, Sync, Timer}
+import cats.effect.Async
 import cats.syntax.all._
 import org.http4s.{Request, Uri}
 import org.typelevel.log4cats.Logger
@@ -11,7 +11,7 @@ import sqs4s.api.lo.CreateQueue.defaults._
 import scala.concurrent.duration._
 import scala.xml.Elem
 
-final case class CreateQueue[F[_]: Sync: Clock: Timer](
+final case class CreateQueue[F[_]: Async](
   name: String,
   sqsEndpoint: Uri,
   delay: Duration = DelaySeconds,
@@ -28,20 +28,17 @@ final case class CreateQueue[F[_]: Sync: Clock: Timer](
       "VisibilityTimeout" -> visibilityTimeout.toString
     )
 
-    val queries = List(
-      "Action" -> "CreateQueue",
-      "QueueName" -> name
-    ) ++ version
-
-    val params =
-      attributes.zipWithIndex
-        .flatMap {
-          case ((key, value), index) =>
-            List(
-              s"Attribute.${index + 1}.Name" -> key,
-              s"Attribute.${index + 1}.Value" -> value
-            )
-        } ++ queries
+    val params = attributes.zipWithIndex.flatMap {
+      case ((key, value), index) =>
+        List(
+          s"Attribute.${index + 1}.Name" -> key,
+          s"Attribute.${index + 1}.Value" -> value
+        )
+    } ++ List(
+      Some("Action" -> "CreateQueue"),
+      Some("QueueName" -> name),
+      version
+    ).flatten
 
     SignedRequest.get[F](
       params,
@@ -53,14 +50,13 @@ final case class CreateQueue[F[_]: Sync: Clock: Timer](
 
   def parseResponse(response: Elem): F[CreateQueue.Result] = {
     val queue = (response \\ "QueueUrl").text
-    queue.nonEmpty
+    queue
+      .nonEmpty
       .guard[Option]
-      .as {
-        CreateQueue.Result(queue).pure[F]
-      }
-      .getOrElse {
-        Sync[F].raiseError(UnexpectedResponseError("QueueUrl", response))
-      }
+      .as(CreateQueue.Result(queue).pure[F])
+      .getOrElse(
+        Async[F].raiseError(UnexpectedResponseError("QueueUrl", response))
+      )
   }
 }
 

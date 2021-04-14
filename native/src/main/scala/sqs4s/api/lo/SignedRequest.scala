@@ -2,7 +2,7 @@ package sqs4s.api.lo
 
 import java.util.concurrent.TimeUnit
 
-import cats.effect.{Clock, Sync}
+import cats.effect.Sync
 import cats.syntax.all._
 import org.http4s.{Method, Request, Uri}
 import org.typelevel.log4cats.Logger
@@ -10,7 +10,7 @@ import sqs4s.auth.{Credential, Credentials, TemporarySecurityCredential}
 import sqs4s.internal.aws4.common._
 import sqs4s.internal.models.CReq
 
-final case class SignedRequest[F[_]: Sync: Clock](
+final case class SignedRequest[F[_]: Sync](
   params: List[(String, String)],
   request: Request[F],
   uri: Uri,
@@ -20,7 +20,8 @@ final case class SignedRequest[F[_]: Sync: Clock](
   def render(logger: Logger[F]): F[Request[F]] = {
     for {
       credential <- credentials.get
-      millis <- Clock[F].realTime(TimeUnit.MILLISECONDS)
+      time <- Sync[F].realTime
+      millis = time.toMillis
       fullUri = buildUri(uri, params, credential)
       req <-
         request
@@ -49,10 +50,11 @@ final case class SignedRequest[F[_]: Sync: Clock](
   ): Uri = {
     val paramsWithCred = credential match {
       case cred: TemporarySecurityCredential =>
-        (params ++ List(
-          "SecurityToken" -> cred.sessionToken,
-          "AWSAccessKeyId" -> cred.accessKey
-        )).sortBy {
+        (
+          ("SecurityToken" -> cred.sessionToken) ::
+            ("AWSAccessKeyId" -> cred.accessKey) ::
+            params
+        ).sortBy {
           case (key, _) => key
         }
 
@@ -69,7 +71,7 @@ final case class SignedRequest[F[_]: Sync: Clock](
 }
 
 object SignedRequest {
-  def post[F[_]: Sync: Clock](
+  def post[F[_]: Sync](
     params: List[(String, String)],
     uri: Uri,
     credentials: Credentials[F],
@@ -83,7 +85,7 @@ object SignedRequest {
       region
     )
 
-  def get[F[_]: Sync: Clock](
+  def get[F[_]: Sync](
     params: List[(String, String)],
     uri: Uri,
     credentials: Credentials[F],

@@ -8,9 +8,9 @@ import cats.effect.Sync
 import cats.syntax.all._
 import org.http4s.Credentials.Token
 import org.http4s.headers.Authorization
-import org.http4s.util.CaseInsensitiveString
 import org.http4s.{Headers, Method, Query, Request, Uri}
 import org.typelevel.log4cats.Logger
+import org.typelevel.ci.CIString
 import sqs4s.internal.aws4.common._
 
 import scala.collection.compat._
@@ -44,7 +44,7 @@ private[sqs4s] object models {
 
   final case class CHeaders(headers: Headers, method: Method) {
     val canonical: List[(String, String)] = {
-      val kvs = headers.toList.map(h => (h.name.value, h.value))
+      val kvs = headers.headers.map(h => (h.name.toString, h.value))
 
       val removeDateHeader: List[(String, String)] => List[(String, String)] =
         _.filterNot {
@@ -103,7 +103,7 @@ private[sqs4s] object models {
   final case class CReq[F[_]: Sync](request: Request[F]) {
     lazy val uri: Uri = request.uri
     lazy val method: Method = request.method
-    lazy val path: String = uri.path
+    lazy val path: String = uri.path.renderString
     lazy val canonicalQuery: CQuery = CQuery(request.uri.query)
     lazy val canonicalHeaders: CHeaders =
       CHeaders(request.headers, request.method)
@@ -173,7 +173,7 @@ private[sqs4s] object models {
           case (k, v) => s"$k=$v"
         }
           .mkString(", ")
-        Token(CaseInsensitiveString(AwsAlgo), tk)
+        Token(CIString(AwsAlgo), tk)
       }
   }
 }

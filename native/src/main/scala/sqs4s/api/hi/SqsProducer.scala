@@ -1,8 +1,7 @@
 package sqs4s.api
 package hi
 
-import cats.MonadError
-import cats.effect.{Clock, Concurrent, Timer}
+import cats.effect.Async
 import cats.syntax.all._
 import fs2.Stream
 import org.http4s.client.Client
@@ -45,7 +44,7 @@ object SqsProducer {
   private[hi] final class ApplyPartiallyApplied[T] private[SqsProducer] (
     private val dummy: Boolean
   ) extends AnyVal {
-    def apply[F[_]: Concurrent: Timer: Clock](
+    def apply[F[_]: Async](
       client: Client[F],
       config: SqsConfig[F],
       logger: Logger[F]
@@ -89,8 +88,7 @@ object SqsProducer {
                   }
                   .flatMap(SendMessageBatch(_).runWith(client, config, logger))
               } else {
-                MonadError[F, Throwable]
-                  .raiseError[SendMessageBatch.Result](MessageTooLarge)
+                Async[F].raiseError[SendMessageBatch.Result](MessageTooLarge)
               }
             }
       }
@@ -99,7 +97,7 @@ object SqsProducer {
   private[hi] final class DefaultPartiallyApplied[T] private[SqsProducer] (
     private val dummy: Boolean
   ) extends AnyVal {
-    def apply[F[_]: Concurrent: Timer: Clock](
+    def apply[F[_]: Async](
       client: Client[F],
       config: SqsConfig[F]
     )(

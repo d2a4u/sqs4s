@@ -7,25 +7,25 @@ import java.time.format.DateTimeFormatter
 import java.time._
 import java.util.concurrent.TimeUnit
 
-import cats.effect.{Clock, Sync}
+import cats.effect.Sync
 import cats.syntax.all._
 import fs2._
 import javax.crypto.Mac
 import javax.crypto.spec.SecretKeySpec
 import javax.xml.bind.DatatypeConverter
 import org.http4s.{Header, Request, Uri}
+import org.typelevel.ci.CIString
 
 private[sqs4s] object common {
-
   val IsoDateTimeFormat = "yyyyMMdd'T'HHmmss'Z'"
   val Algo = "HmacSHA256"
   val AwsAlgo = "AWS4-HMAC-SHA256"
   val Sha256 = "SHA-256"
   val NewLine = "\n"
   val EmptyString = ""
-  val XAmzDate = "x-amz-date"
-  val Expires = "Expires"
-  val Host = "Host"
+  val XAmzDate = CIString("x-amz-date")
+  val Expires = CIString("Expires")
+  val Host = CIString("Host")
 
   def sha256HexDigest[F[_]: Sync](data: Stream[F, Byte]): F[String] =
     data
@@ -114,24 +114,26 @@ private[sqs4s] object common {
 
   implicit class RichRequest[F[_]](request: Request[F]) {
     def withHostHeader(uri: Uri): Request[F] =
-      uri.host
-        .map(h => request.putHeaders(Header(Host, h.value)))
-        .getOrElse(request)
+      uri
+        .host
+        .map { h =>
+          request.putHeaders(Header.Raw(name = Host, value = h.value))
+        }.getOrElse(request)
 
-    def withExpiresHeaderF[G[x] >: F[x]: Sync: Clock](
+    def withExpiresHeaderF[G[x] >: F[x]: Sync](
       seconds: Long = 15 * 60
     ): G[Request[F]] =
       for {
-        millis <- Clock[G].realTime(TimeUnit.MILLISECONDS)
+        time <- Sync[G].realTime
         expires <- Sync[G].delay {
-          val now = Instant.ofEpochMilli(millis)
+          val now = Instant.ofEpochMilli(time.toMillis)
           val fmt = DateTimeFormatter.ofPattern(IsoDateTimeFormat)
           LocalDateTime
             .ofInstant(now.plusSeconds(seconds), ZoneOffset.UTC)
             .format(fmt)
         }
       } yield {
-        request.putHeaders(Header(Expires, expires))
+        request.putHeaders(Header.Raw(name = Expires, value = expires))
       }
 
     def withXAmzDateHeaderF[G[x] >: F[x]: Sync](
@@ -144,7 +146,7 @@ private[sqs4s] object common {
           LocalDateTime.ofInstant(now, ZoneOffset.UTC).format(fmt)
         }
       } yield {
-        request.putHeaders(Header(XAmzDate, ts))
+        request.putHeaders(Header.Raw(name = XAmzDate, value = ts))
       }
   }
 }
