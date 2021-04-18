@@ -24,9 +24,8 @@ trait SqsProducer[F[_], T] {
   ): F[SendMessage.Result]
 
   def batchProduce(
-    messages: Stream[F, T],
+    messages: Stream[F, SendMessageBatch.BatchEntry[T]],
     id: T => F[String],
-    attributes: Map[String, String] = Map.empty,
     delay: Option[Duration] = None,
     dedupId: Option[String] = None,
     groupId: Option[String] = None,
@@ -64,9 +63,8 @@ object SqsProducer {
             .runWith(client, config, logger)
 
         override def batchProduce(
-          messages: Stream[F, T],
+          messages: Stream[F, SendMessageBatch.BatchEntry[T]],
           id: T => F[String],
-          attributes: Map[String, String] = Map.empty,
           delay: Option[Duration] = None,
           dedupId: Option[String] = None,
           groupId: Option[String] = None,
@@ -77,14 +75,21 @@ object SqsProducer {
             .groupWithin(10, groupWithin)
             .mapAsync(maxConcurrent) { chunk =>
               val totalSize = chunk
-                .map(t => serializer.serialize(t).getBytes.length)
+                .map(t => serializer.serialize(t.message).getBytes.length)
                 .fold
               if (totalSize <= 256000) {
                 chunk
-                  .traverse { t =>
-                    id(t).map { i =>
+                  .traverse { entry =>
+                    id(entry.message).map { i =>
                       SendMessageBatch
-                        .Entry(i, t, attributes, delay, dedupId, groupId)
+                        .Entry(
+                          i,
+                          entry.message,
+                          entry.attributes,
+                          delay,
+                          dedupId,
+                          groupId
+                        )
                     }
                   }
                   .flatMap(SendMessageBatch(_).runWith(client, config, logger))

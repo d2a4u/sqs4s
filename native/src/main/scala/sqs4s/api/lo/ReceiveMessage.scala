@@ -24,7 +24,7 @@ final case class ReceiveMessage[F[_]: Sync: Clock: Timer, T](
       "MaxNumberOfMessages" -> maxNumberOfMessages.toString,
       "VisibilityTimeout" -> visibilityTimeout.toString,
       "AttributeName" -> "All",
-      "MessageAttributeName" -> "All",
+      "MessageAttributeName" -> "All"
     ) ++ version ++ waitTimeSeconds.toList.map(sec =>
       "WaitTimeSeconds" -> sec.toString
     )
@@ -47,7 +47,9 @@ final case class ReceiveMessage[F[_]: Sync: Clock: Timer, T](
           .map(node => (node \ "Name").text -> (node \ "Value").text)
           .toMap
         val messageAttributes = (msg \ "MessageAttribute")
-          .map(node => (node \ "Name").text -> (node \ "Value").text)
+          .map(node =>
+            (node \ "Name").text -> (node \ "Value" \ "StringValue").text
+          )
           .toMap
         val mid = (msg \ "MessageId").text
         val handle = (msg \ "ReceiptHandle").text

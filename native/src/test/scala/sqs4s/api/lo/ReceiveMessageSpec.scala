@@ -95,7 +95,9 @@ class ReceiveMessageSpec extends IOSpec {
       .unsafeRunSync()
 
     messages.size shouldEqual 1
-    messages.head.flatMap(_.messageAttributes.get("UserDefinedAttribute")) contains("UserDefinedValue")
+    messages.head.flatMap(
+      _.messageAttributes.get("UserDefinedAttribute")
+    ) contains ("UserDefinedValue")
   }
 
   it should "return empty list of response doesn't contain any message" in {
