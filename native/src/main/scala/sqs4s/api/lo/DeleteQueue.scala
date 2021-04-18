@@ -1,6 +1,6 @@
 package sqs4s.api.lo
 
-import cats.effect.{Clock, Sync, Timer}
+import cats.effect.{Clock, Sync}
 import cats.syntax.all._
 import org.http4s.{Request, Uri}
 import org.typelevel.log4cats.Logger
@@ -8,8 +8,9 @@ import sqs4s.api.SqsConfig
 import sqs4s.api.errors.UnexpectedResponseError
 
 import scala.xml.Elem
+import cats.effect.Temporal
 
-final case class DeleteQueue[F[_]: Sync: Clock: Timer](
+final case class DeleteQueue[F[_]: Sync: Clock: Temporal](
   sqsEndpoint: Uri
 ) extends Action[F, DeleteQueue.Result] {
 

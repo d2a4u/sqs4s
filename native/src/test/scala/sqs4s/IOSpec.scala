@@ -12,6 +12,7 @@ import org.scalatest.time.SpanSugar.convertIntToGrainOfTime
 import scala.concurrent.ExecutionContext
 import scala.concurrent.ExecutionContext.global
 import scala.concurrent.duration.TimeUnit
+import cats.effect.Temporal
 
 trait IOSpec extends AnyFlatSpecLike with ScalaFutures with Matchers {
 
@@ -19,7 +20,7 @@ trait IOSpec extends AnyFlatSpecLike with ScalaFutures with Matchers {
   val testDateTime =
     LocalDateTime
       .parse(testTimeStamp, DateTimeFormatter.ofPattern("yyyyMMdd'T'HHmmss'Z'"))
-  implicit val timer: Timer[IO] = IO.timer(global)
+  implicit val timer: Temporal[IO] = IO.timer(global)
   implicit val cs: ContextShift[IO] = IO.contextShift(global)
   implicit val ec: ExecutionContext = global
   implicit lazy val testClock = new Clock[IO] {

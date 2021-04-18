@@ -1,6 +1,6 @@
 package sqs4s.api.lo
 
-import cats.effect.{Clock, Sync, Timer}
+import cats.effect.{Clock, Sync}
 import cats.syntax.all._
 import fs2.Chunk
 import org.http4s.Request
@@ -11,8 +11,9 @@ import sqs4s.serialization.SqsSerializer
 
 import scala.concurrent.duration.Duration
 import scala.xml.Elem
+import cats.effect.Temporal
 
-final case class SendMessageBatch[F[_]: Sync: Clock: Timer, T](
+final case class SendMessageBatch[F[_]: Sync: Clock: Temporal, T](
   messages: Chunk[SendMessageBatch.Entry[T]]
 )(implicit serializer: SqsSerializer[T])
     extends Action[F, SendMessageBatch.Result] {

@@ -3,7 +3,7 @@ package hi
 
 import cats.Parallel
 import cats.data.NonEmptyList
-import cats.effect.{Clock, Concurrent, Timer}
+import cats.effect.{Clock, Concurrent}
 import cats.syntax.all._
 import fs2._
 import org.http4s.client.Client
@@ -15,6 +15,7 @@ import sqs4s.serialization.SqsDeserializer
 
 import scala.concurrent.TimeoutException
 import scala.concurrent.duration._
+import cats.effect.Temporal
 
 trait SqsConsumer[F[_], T] {
 
@@ -106,7 +107,7 @@ object SqsConsumer {
   private[hi] final class ApplyPartiallyApplied[T] private[SqsConsumer] (
     private val dummy: Boolean
   ) extends AnyVal {
-    def apply[F[_]: Concurrent: Parallel: Clock: Timer: SqsDeserializer[
+    def apply[F[_]: Concurrent: Parallel: Clock: Temporal: SqsDeserializer[
       *[_],
       T
     ]](
@@ -315,7 +316,7 @@ object SqsConsumer {
   private[hi] final class DefaultPartiallyApplied[T] private[SqsConsumer] (
     private val dummy: Boolean
   ) extends AnyVal {
-    def apply[F[_]: Concurrent: Parallel: Clock: Timer: SqsDeserializer[
+    def apply[F[_]: Concurrent: Parallel: Clock: Temporal: SqsDeserializer[
       *[_],
       T
     ]](

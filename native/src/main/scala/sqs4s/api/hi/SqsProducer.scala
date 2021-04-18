@@ -2,7 +2,7 @@ package sqs4s.api
 package hi
 
 import cats.MonadError
-import cats.effect.{Clock, Concurrent, Timer}
+import cats.effect.{Clock, Concurrent}
 import cats.syntax.all._
 import fs2.Stream
 import org.http4s.client.Client
@@ -13,6 +13,7 @@ import sqs4s.api.lo.{SendMessage, SendMessageBatch}
 import sqs4s.serialization.SqsSerializer
 
 import scala.concurrent.duration._
+import cats.effect.Temporal
 
 trait SqsProducer[F[_], T] {
   def produce(
@@ -44,7 +45,7 @@ object SqsProducer {
   private[hi] final class ApplyPartiallyApplied[T] private[SqsProducer] (
     private val dummy: Boolean
   ) extends AnyVal {
-    def apply[F[_]: Concurrent: Timer: Clock](
+    def apply[F[_]: Concurrent: Temporal: Clock](
       client: Client[F],
       config: SqsConfig[F],
       logger: Logger[F]
@@ -104,7 +105,7 @@ object SqsProducer {
   private[hi] final class DefaultPartiallyApplied[T] private[SqsProducer] (
     private val dummy: Boolean
   ) extends AnyVal {
-    def apply[F[_]: Concurrent: Timer: Clock](
+    def apply[F[_]: Concurrent: Temporal: Clock](
       client: Client[F],
       config: SqsConfig[F]
     )(

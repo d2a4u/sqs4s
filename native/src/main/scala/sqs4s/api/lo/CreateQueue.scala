@@ -1,6 +1,6 @@
 package sqs4s.api.lo
 
-import cats.effect.{Clock, Sync, Timer}
+import cats.effect.{Clock, Sync}
 import cats.syntax.all._
 import org.http4s.{Request, Uri}
 import org.typelevel.log4cats.Logger
@@ -10,8 +10,9 @@ import sqs4s.api.lo.CreateQueue.defaults._
 
 import scala.concurrent.duration._
 import scala.xml.Elem
+import cats.effect.Temporal
 
-final case class CreateQueue[F[_]: Sync: Clock: Timer](
+final case class CreateQueue[F[_]: Sync: Clock: Temporal](
   name: String,
   sqsEndpoint: Uri,
   delay: Duration = DelaySeconds,

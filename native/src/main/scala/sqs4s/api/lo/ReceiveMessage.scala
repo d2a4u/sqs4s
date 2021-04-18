@@ -1,6 +1,6 @@
 package sqs4s.api.lo
 
-import cats.effect.{Clock, Sync, Timer}
+import cats.effect.{Clock, Sync}
 import cats.syntax.all._
 import fs2.Chunk
 import org.http4s.Request
@@ -10,8 +10,9 @@ import sqs4s.api.errors.UnexpectedResponseError
 import sqs4s.serialization.SqsDeserializer
 
 import scala.xml.Elem
+import cats.effect.Temporal
 
-final case class ReceiveMessage[F[_]: Sync: Clock: Timer, T](
+final case class ReceiveMessage[F[_]: Sync: Clock: Temporal, T](
   maxNumberOfMessages: Int = 10, // max 10 per sqs api doc
   visibilityTimeout: Int = 15,
   waitTimeSeconds: Option[Int] = None

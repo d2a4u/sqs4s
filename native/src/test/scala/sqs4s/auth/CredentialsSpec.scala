@@ -1,7 +1,6 @@
 package sqs4s.auth
 
 import fs2.Stream
-import cats.effect.concurrent.Ref
 import cats.effect.{IO, Resource}
 import cats.implicits._
 import org.http4s.{Request, Response, Method, EntityDecoder}
@@ -9,6 +8,7 @@ import org.scalacheck.Gen
 import sqs4s.{Arbitraries, IOSpec}
 
 import scala.concurrent.duration._
+import cats.effect.Ref
 
 class CredentialsSpec extends IOSpec with Arbitraries {
 

@@ -30,7 +30,7 @@ class StringToSignSpec extends IOSpec with Inspectors {
 
   "String to sign" should "be correct" in {
     val testSuite = getClass.getResource("/aws-sig-v4-test-suite")
-    val filesF = IO.suspend {
+    val filesF = IO.defer {
       val folder = new File(testSuite.getPath)
       if (folder.exists && folder.isDirectory)
         folder.listFiles.toList
