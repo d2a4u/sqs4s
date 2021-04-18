@@ -23,7 +23,8 @@ final case class ReceiveMessage[F[_]: Sync: Clock: Timer, T](
       "Action" -> "ReceiveMessage",
       "MaxNumberOfMessages" -> maxNumberOfMessages.toString,
       "VisibilityTimeout" -> visibilityTimeout.toString,
-      "AttributeName" -> "All"
+      "AttributeName" -> "All",
+      "MessageAttributeName" -> "All"
     ) ++ version ++ waitTimeSeconds.toList.map(sec =>
       "WaitTimeSeconds" -> sec.toString
     )
@@ -45,6 +46,11 @@ final case class ReceiveMessage[F[_]: Sync: Clock: Timer, T](
         val attributes = (msg \ "Attribute")
           .map(node => (node \ "Name").text -> (node \ "Value").text)
           .toMap
+        val messageAttributes = (msg \ "MessageAttribute")
+          .map(node =>
+            (node \ "Name").text -> (node \ "Value" \ "StringValue").text
+          )
+          .toMap
         val mid = (msg \ "MessageId").text
         val handle = (msg \ "ReceiptHandle").text
         handle.nonEmpty
@@ -57,7 +63,8 @@ final case class ReceiveMessage[F[_]: Sync: Clock: Timer, T](
                 t,
                 raw,
                 md5Body,
-                attributes
+                attributes,
+                messageAttributes
               )
             }
           }
@@ -82,6 +89,7 @@ object ReceiveMessage {
     body: T,
     rawBody: String,
     md5OfBody: String,
-    attributes: Map[String, String]
+    attributes: Map[String, String],
+    messageAttributes: Map[String, String]
   )
 }

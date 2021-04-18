@@ -31,11 +31,7 @@ object TestMessage {
     Arbitrary(gen)
   }
 
-  def arbStream(n: Long): Stream[IO, TestMessage] = {
-    val msg = arbTestMessage.arbitrary.sample.get
-    Stream
-      .random[IO]
-      .map(i => msg.copy(int = i))
-      .take(n)
-  }
+  def sample: TestMessage = arbTestMessage.arbitrary.sample.get
+
+  def arb(n: Int): List[TestMessage] = List.fill(n)(sample)
 }

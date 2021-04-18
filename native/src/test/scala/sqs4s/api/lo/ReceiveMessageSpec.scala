@@ -48,7 +48,7 @@ class ReceiveMessageSpec extends IOSpec {
   }
 
   it should "parse successful response" in {
-    ReceiveMessage[IO, String]()
+    val messages = ReceiveMessage[IO, String]()
       .parseResponse {
         val stubbed =
           s"""
@@ -79,6 +79,10 @@ class ReceiveMessageSpec extends IOSpec {
            |        <Name>ApproximateFirstReceiveTimestamp</Name>
            |        <Value>1250700979248</Value>
            |      </Attribute>
+           |      <MessageAttribute>
+           |        <Name>UserDefinedAttribute</Name>
+           |        <Value>UserDefinedValue</Value>
+           |      </MessageAttribute>
            |    </Message>
            |  </ReceiveMessageResult>
            |  <ResponseMetadata>
@@ -89,7 +93,11 @@ class ReceiveMessageSpec extends IOSpec {
         XML.loadString(stubbed)
       }
       .unsafeRunSync()
-      .size shouldEqual 1
+
+    messages.size shouldEqual 1
+    messages.head.flatMap(
+      _.messageAttributes.get("UserDefinedAttribute")
+    ) contains ("UserDefinedValue")
   }
 
   it should "return empty list of response doesn't contain any message" in {

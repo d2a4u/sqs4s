@@ -36,7 +36,8 @@ final case class SendMessage[F[_]: Sync: Clock: Timer, T](
           case ((key, value), index) =>
             List(
               s"MessageAttribute.${index + 1}.Name" -> key,
-              s"MessageAttribute.${index + 1}.Value" -> value
+              s"MessageAttribute.${index + 1}.Value.StringValue" -> value,
+              s"MessageAttribute.${index + 1}.Value.DataType" -> "String" // TODO: support other DataType
             )
         } ++ queries
     }

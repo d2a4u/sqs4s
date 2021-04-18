@@ -14,7 +14,7 @@ class CredentialsSpec extends IOSpec with Arbitraries {
 
   behavior.of("instanceMetadataResource")
 
-  def calledCounterMockClient(
+  private def calledCounterMockClient(
     ref: Ref[IO, Int],
     genCreds: Gen[List[CredentialResponse]]
   ) =

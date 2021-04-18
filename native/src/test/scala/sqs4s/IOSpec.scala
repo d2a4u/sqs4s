@@ -2,17 +2,18 @@ package sqs4s
 
 import java.time.format.DateTimeFormatter
 import java.time.{LocalDateTime, ZoneOffset}
-
 import cats.effect._
 import org.scalacheck.{Arbitrary, Gen}
+import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.flatspec.AnyFlatSpecLike
 import org.scalatest.matchers.should.Matchers
+import org.scalatest.time.SpanSugar.convertIntToGrainOfTime
 
 import scala.concurrent.ExecutionContext
 import scala.concurrent.ExecutionContext.global
 import scala.concurrent.duration.TimeUnit
 
-trait IOSpec extends AnyFlatSpecLike with Matchers {
+trait IOSpec extends AnyFlatSpecLike with ScalaFutures with Matchers {
 
   val testTimeStamp = "20150830T123600Z"
   val testDateTime =
@@ -30,6 +31,8 @@ trait IOSpec extends AnyFlatSpecLike with Matchers {
       }
     def monotonic(unit: TimeUnit): IO[Long] = IO(0L)
   }
+  implicit val pc: PatienceConfig =
+    PatienceConfig(scaled(5.minutes), 500.millis)
 
   def arb[T](implicit arb: Arbitrary[T]) = arb.arbitrary.sample.get
 

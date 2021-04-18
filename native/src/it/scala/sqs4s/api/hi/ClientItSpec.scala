@@ -9,7 +9,7 @@ import org.http4s.Uri
 import org.http4s.client.blaze.BlazeClientBuilder
 import org.typelevel.log4cats.slf4j.Slf4jLogger
 import sqs4s.IOSpec
-import sqs4s.api.lo.DeleteMessageBatch
+import sqs4s.api.lo.{DeleteMessageBatch, SendMessageBatch}
 import sqs4s.api.{SqsConfig, _}
 import sqs4s.auth.Credentials
 
@@ -38,45 +38,108 @@ class ClientItSpec extends IOSpec {
       client <- clientResource
       cred <- Credentials.chain(client)
       rootConfig = SqsConfig(sqsRootEndpoint, cred, region)
-      consumerProducer <- TestUtil.queueResource[IO](client, rootConfig, logger).map {
-        queue =>
-          val uri = Uri.unsafeFromString(queue.queueUrl)
-          val conf = SqsConfig(uri, cred, region)
-          val producer = SqsProducer[TestMessage](client, conf, logger)
-          val consumer = SqsConsumer[TestMessage](
-            client,
-            ConsumerConfig(
-              conf.queue,
-              conf.credentials,
-              conf.region,
-              waitTimeSeconds = Some(1),
-              pollingRate = 2.seconds
-            ),
-            logger
-          )
-          (producer, consumer)
-      }
+      consumerProducer <-
+        TestUtil.queueResource[IO](client, rootConfig, logger).map {
+          queue =>
+            val uri = Uri.unsafeFromString(queue.queueUrl)
+            val conf = SqsConfig(uri, cred, region)
+            val producer = SqsProducer[TestMessage](client, conf, logger)
+            val consumer = SqsConsumer[TestMessage](
+              client,
+              ConsumerConfig(
+                conf.queue,
+                conf.credentials,
+                conf.region,
+                waitTimeSeconds = Some(1),
+                pollingRate = 2.seconds
+              ),
+              logger
+            )
+            (producer, consumer)
+        }
     } yield consumerProducer
 
-  it should "batchProduce dequeueAsync messages" in {
-    val numOfMsgs = 22L
-    val input = TestMessage.arbStream(numOfMsgs)
+  it should "produce and read a message with custom attribute values" in {
+    val input = TestMessage.sample
+    val av = Map("foo" -> "1", "bar" -> "2")
 
-    val dequeueAsync =
+    val result =
+      producerConsumerResource.use {
+        case (producer, consumer) =>
+          producer.produce(input, av) >> consumer.read
+      }.unsafeToFuture()
+
+    result.map {
+      case chunk if chunk.head.isDefined =>
+        val r = chunk.toList.head
+        r.messageId shouldBe a[String]
+        r.messageAttributes shouldEqual av
+
+      case _ =>
+        fail()
+    }.futureValue
+  }
+
+  it should "batchProduce dequeueAsync messages" in {
+    val numOfMsgs = 22
+    val input = TestMessage.arb(numOfMsgs)
+
+    val result =
       producerConsumerResource.use {
         case (producer, consumer) =>
           producer
-            .batchProduce(input, _.int.toString.pure[IO]).compile.drain >>
+            .batchProduce(
+              Stream.emits(input).covary[IO].map(
+                SendMessageBatch.BatchEntry(_)
+              ),
+              _.int.toString.pure[IO]
+            ).compile.drain >>
             consumer.dequeueAsync(256).take(numOfMsgs).compile.toList
-      }
+      }.unsafeToFuture().futureValue
 
-    dequeueAsync.unsafeRunSync().size shouldBe numOfMsgs
+    result should contain theSameElementsAs input
+  }
+
+  it should "batchProduce and readsAsync messages with custom attribute values" in {
+    val numOfMsgs = 22
+    val input = TestMessage.arb(numOfMsgs).zipWithIndex.map {
+      case (msg, idx) =>
+        SendMessageBatch.BatchEntry(msg, Map("index" -> idx.toString))
+    }
+
+    val ref = Resource.eval(Ref.of[
+      IO,
+      Set[SendMessageBatch.BatchEntry[TestMessage]]
+    ](Set.empty))
+
+    val resources = for {
+      r <- ref
+      interrupter <- Resource.eval(SignallingRef[IO, Boolean](false))
+      producerConsumer <- producerConsumerResource
+    } yield (r, interrupter, producerConsumer._1, producerConsumer._2)
+
+    val result = resources.use {
+      case (ref, _, producer, consumer) =>
+        producer
+          .batchProduce(Stream.emits(input).covary[IO], _.int.toString.pure[IO])
+          .compile
+          .drain >> consumer.readsAsync(256).evalTap { msg =>
+          ref.update(_ + SendMessageBatch.BatchEntry(
+            msg.body,
+            msg.messageAttributes
+          ))
+        }.map(_.receiptHandle).through(
+          consumer.ack
+        ).take(numOfMsgs).compile.drain >> ref.get
+    }.unsafeToFuture().futureValue
+
+    result should contain theSameElementsAs input
   }
 
   it should "batchProduce consumeAsync messages" in {
-    val numOfMsgs = 22L
-    val input = TestMessage.arbStream(numOfMsgs).compile.toList.unsafeRunSync()
-    val inputStream = Stream[IO, TestMessage](input: _*)
+    val numOfMsgs = 22
+    val input =
+      TestMessage.arb(numOfMsgs)
 
     val ref = Resource.eval(Ref.of[IO, List[TestMessage]](List.empty))
 
@@ -86,10 +149,13 @@ class ClientItSpec extends IOSpec {
       producerConsumer <- producerConsumerResource
     } yield (r, interrupter, producerConsumer._1, producerConsumer._2)
 
-    val consumeAsync = resources.use {
+    val result = resources.use {
       case (ref, interrupter, producer, consumer) =>
         producer
-          .batchProduce(inputStream, _.int.toString.pure[IO])
+          .batchProduce(
+            Stream.emits(input).covary[IO].map(SendMessageBatch.BatchEntry(_)),
+            _.int.toString.pure[IO]
+          )
           .compile
           .drain >>
           consumer
@@ -114,52 +180,54 @@ class ClientItSpec extends IOSpec {
             .interruptWhen(interrupter)
             .compile
             .drain >> ref.get
-    }
+    }.unsafeToFuture().futureValue
 
-    consumeAsync
-      .unsafeRunSync() should contain theSameElementsAs input
+    result should contain theSameElementsAs input
   }
 
   it should "produce and dequeueAsync messages" in {
-    val numOfMsgs = 22L
-    val input = TestMessage.arbStream(numOfMsgs).compile.toList.unsafeRunSync()
-    val inputStream = Stream[IO, TestMessage](input: _*)
+    val numOfMsgs = 22
+    val input = TestMessage.arb(numOfMsgs)
 
-    val dequeueAsync =
+    val result =
       producerConsumerResource.use {
         case (producer, consumer) =>
-          inputStream.mapAsync(256)(producer.produce(_)).compile.drain >>
+          Stream.emits(input).covary[IO].mapAsync(256)(
+            producer.produce(_)
+          ).compile.drain >>
             consumer.dequeueAsync(256).take(numOfMsgs).compile.toList
-      }
+      }.unsafeToFuture().futureValue
 
-    dequeueAsync.unsafeRunSync() should contain theSameElementsAs input
+    result should contain theSameElementsAs input
   }
 
   it should "produce, readsAsync and ack messages" in {
-    val numOfMsgs = 22L
-    val input = TestMessage.arbStream(numOfMsgs).compile.toList.unsafeRunSync()
-    val inputStream = Stream[IO, TestMessage](input: _*)
+    val numOfMsgs = 22
+    val input = TestMessage.arb(numOfMsgs)
 
     def reads(ref: Ref[IO, List[TestMessage]]) =
       producerConsumerResource.use {
         case (producer, consumer) =>
-          inputStream.mapAsync(256)(producer.produce(_)).compile.drain >>
-            consumer.readsAsync(256).evalTap(
-              msg => ref.update(_ :+ msg.body)
+          Stream.emits(input).covary[IO].mapAsync(256)(
+            producer.produce(_)
+          ).compile.drain >>
+            consumer.readsAsync(256).evalTap(msg =>
+              ref.update(_ :+ msg.body)
             ).map(_.receiptHandle).through(
               consumer.ack
             ).take(numOfMsgs).compile.drain >> ref.get
       }
 
-    Ref.of[IO, List[TestMessage]](List.empty).flatMap(
+    val result = Ref.of[IO, List[TestMessage]](List.empty).flatMap(
       reads
-    ).unsafeRunSync() should contain theSameElementsAs input
+    ).unsafeToFuture().futureValue
+
+    result should contain theSameElementsAs input
   }
 
   it should "produce, reads and batchAck messages" in {
-    val numOfMsgs = 22L
-    val input = TestMessage.arbStream(numOfMsgs).compile.toList.unsafeRunSync()
-    val inputStream = Stream[IO, TestMessage](input: _*)
+    val numOfMsgs = 22
+    val input = TestMessage.arb(numOfMsgs)
 
     val resources = for {
       ref <- Resource.eval(Ref.of[IO, List[TestMessage]](List.empty))
@@ -167,9 +235,11 @@ class ClientItSpec extends IOSpec {
       producerConsumer <- producerConsumerResource
     } yield (ref, interrupter, producerConsumer._1, producerConsumer._2)
 
-    val batchAck = resources.use {
+    val result = resources.use {
       case (ref, interrupter, producer, consumer) =>
-        inputStream.mapAsync(256)(producer.produce(_)).compile.drain >>
+        Stream.emits(input).covary[IO].mapAsync(256)(
+          producer.produce(_)
+        ).compile.drain >>
           consumer.reads.evalTap { msg =>
 
             def loop(): IO[Unit] = {
@@ -201,8 +271,8 @@ class ClientItSpec extends IOSpec {
           ).interruptWhen(interrupter)
             .compile
             .drain >> ref.get
-    }
+    }.unsafeToFuture().futureValue
 
-    batchAck.unsafeRunSync() should contain theSameElementsAs input
+    result should contain theSameElementsAs input
   }
 }

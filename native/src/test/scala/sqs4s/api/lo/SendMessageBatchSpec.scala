@@ -66,25 +66,37 @@ class SendMessageBatchSpec extends IOSpec {
     params("SendMessageBatchRequestEntry.2.Id") shouldEqual "2"
     params("SendMessageBatchRequestEntry.1.MessageBody") shouldEqual "test1"
     params("SendMessageBatchRequestEntry.2.MessageBody") shouldEqual "test2"
+    params(
+      "SendMessageBatchRequestEntry.1.MessageAttribute.1.Value.DataType"
+    ) shouldEqual "String"
+    params(
+      "SendMessageBatchRequestEntry.1.MessageAttribute.2.Value.DataType"
+    ) shouldEqual "String"
+    params(
+      "SendMessageBatchRequestEntry.2.MessageAttribute.1.Value.DataType"
+    ) shouldEqual "String"
+    params(
+      "SendMessageBatchRequestEntry.2.MessageAttribute.2.Value.DataType"
+    ) shouldEqual "String"
     attr(
       params("SendMessageBatchRequestEntry.1.MessageAttribute.1.Name")
     ) shouldEqual params(
-      "SendMessageBatchRequestEntry.1.MessageAttribute.1.Value"
+      "SendMessageBatchRequestEntry.1.MessageAttribute.1.Value.StringValue"
     )
     attr(
       params("SendMessageBatchRequestEntry.1.MessageAttribute.2.Name")
     ) shouldEqual params(
-      "SendMessageBatchRequestEntry.1.MessageAttribute.2.Value"
+      "SendMessageBatchRequestEntry.1.MessageAttribute.2.Value.StringValue"
     )
     attr(
       params("SendMessageBatchRequestEntry.2.MessageAttribute.1.Name")
     ) shouldEqual params(
-      "SendMessageBatchRequestEntry.2.MessageAttribute.1.Value"
+      "SendMessageBatchRequestEntry.2.MessageAttribute.1.Value.StringValue"
     )
     attr(
       params("SendMessageBatchRequestEntry.2.MessageAttribute.2.Name")
     ) shouldEqual params(
-      "SendMessageBatchRequestEntry.2.MessageAttribute.2.Value"
+      "SendMessageBatchRequestEntry.2.MessageAttribute.2.Value.StringValue"
     )
     params("SendMessageBatchRequestEntry.1.DelaySeconds") shouldEqual "2"
     params("SendMessageBatchRequestEntry.2.DelaySeconds") shouldEqual "2"

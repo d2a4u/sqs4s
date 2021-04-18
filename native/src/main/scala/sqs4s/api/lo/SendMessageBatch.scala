@@ -24,7 +24,8 @@ final case class SendMessageBatch[F[_]: Sync: Clock: Timer, T](
           case ((key, value), index) =>
             List(
               s"MessageAttribute.${index + 1}.Name" -> key,
-              s"MessageAttribute.${index + 1}.Value" -> value
+              s"MessageAttribute.${index + 1}.Value.StringValue" -> value,
+              s"MessageAttribute.${index + 1}.Value.DataType" -> "String" // TODO: support other DataType
             )
         }
       List(
@@ -116,7 +117,12 @@ final case class SendMessageBatch[F[_]: Sync: Clock: Timer, T](
 }
 
 object SendMessageBatch {
-  final case class Entry[T](
+  final case class BatchEntry[T](
+    message: T,
+    attributes: Map[String, String] = Map.empty
+  )
+
+  private[api] final case class Entry[T](
     id: String,
     message: T,
     attributes: Map[String, String] = Map.empty,

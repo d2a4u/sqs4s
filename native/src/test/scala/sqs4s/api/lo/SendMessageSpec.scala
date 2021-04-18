@@ -47,14 +47,16 @@ class SendMessageSpec extends IOSpec {
         .unsafeRunSync()
     val params = request.uri.query.params
     params("Action") shouldEqual "SendMessage"
-    params.get("Version").nonEmpty shouldEqual true
+    params.contains("Version") shouldEqual true
     params("DelaySeconds").toInt shouldEqual 2
     attr(params("MessageAttribute.1.Name")) shouldEqual params(
-      "MessageAttribute.1.Value"
+      "MessageAttribute.1.Value.StringValue"
     )
+    params("MessageAttribute.1.Value.DataType") shouldEqual "String"
     attr(params("MessageAttribute.2.Name")) shouldEqual params(
-      "MessageAttribute.2.Value"
+      "MessageAttribute.2.Value.StringValue"
     )
+    params("MessageAttribute.2.Value.DataType") shouldEqual "String"
     params("MessageBody") shouldEqual "test"
     params("MessageDeduplicationId") shouldEqual "dedup1"
     params("MessageGroupId") shouldEqual "group1"
