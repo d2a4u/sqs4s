@@ -1,19 +1,28 @@
 package sqs4s.auth
 
 import cats.Applicative
-import cats.effect.{Concurrent, Resource, Sync, Timer}
+import cats.effect.{Blocker, Concurrent, ContextShift, Resource, Sync, Timer}
+import cats.instances.queue
 import cats.syntax.all._
 import fs2._
+import fs2.io.file
 import org.http4s.Method.{GET, PUT}
 import org.http4s.circe.CirceEntityDecoder._
 import org.http4s.client.Client
 import org.http4s.client.dsl.Http4sClientDsl
 import org.http4s.client.middleware.FollowRedirect
+import org.http4s.scalaxml._
 import org.http4s.syntax.all._
-import org.http4s.{Header, Response, Status, Uri}
+import org.http4s._
+import sqs4s.api.errors.UnexpectedResponseError
+import sqs4s.api.lo.CreateQueue
 import sqs4s.auth.errors._
 
+import java.nio.file.Paths
+import java.time.Instant
 import scala.concurrent.duration._
+import scala.util.Try
+import scala.xml.Elem
 
 trait Credentials[F[_]] {
   def get: F[Credential]
@@ -242,6 +251,97 @@ object Credentials {
       } yield cred
 
     temporaryCredentials[F](refresh, ttl, refreshBefore)
+  }
+
+  def stsAssumeRoleWithWebIdentitySession[
+    F[_]: Concurrent: ContextShift: Timer
+  ](
+    client: Client[F],
+    blocker: Blocker,
+    ttl: FiniteDuration = 3600.seconds,
+    refreshBefore: FiniteDuration = 5.minutes,
+    allowRedirect: Boolean = true
+  ): Resource[F, Credentials[F]] = {
+    val stsEndpoint = uri"https://sts.amazonaws.com/"
+    val httpClient =
+      if (allowRedirect) {
+        FollowRedirect[F](10)(client)
+      } else {
+        client
+      }
+
+    def refresh(
+      roleArn: String,
+      roleSessionName: String,
+      webIdTokenFile: String
+    ): F[CredentialResponse] = {
+      def uri(webIdToken: String) = stsEndpoint.withQueryParams(
+        Map(
+          "Action" -> "AssumeRoleWithWebIdentity",
+          "DurationSeconds" -> ttl.toSeconds.toString,
+          "ProviderId" -> "www.amazon.com",
+          "RoleSessionName" -> roleSessionName,
+          "RoleArn" -> roleArn,
+          "WebIdentityToken" -> webIdToken,
+          "Version" -> "2011-06-15"
+        )
+      )
+
+      def parseResponse(xml: Elem): Option[CredentialResponse] =
+        for {
+          node <- (xml \\ "Credentials").headOption
+          st <- Option((node \ "SessionToken").text)
+          sak <- Option((node \ "SecretAccessKey").text)
+          expStr <- Option((node \ "Expiration").text)
+          exp <- Try(Instant.parse(expStr)).toOption
+          akid <- Option((node \ "AccessKeyId").text)
+        } yield CredentialResponse(akid, sak, st, None, exp)
+
+      for {
+        token <- file.readAll[F](
+          Paths.get(webIdTokenFile),
+          blocker,
+          1024
+        ).through(text.utf8Decode).through(text.lines).compile.toList
+        req = Request[F](method = Method.GET).withUri(uri(token.mkString))
+        resp <- httpClient.expectOr[Elem](req)(onError)
+        cred <-
+          Sync[F].fromOption(
+            parseResponse(resp),
+            UnexpectedResponseError("AssumeRoleWithWebIdentityResponse", resp)
+          )
+      } yield cred
+
+    }
+
+    val AWS_ROLE_ARN_ENV_VAR = "AWS_ROLE_ARN"
+    val AWS_ROLE_SESSION_NAME_ENV_VAR = "AWS_ROLE_SESSION_NAME"
+    val AWS_WEB_IDENTITY_TOKEN_FILE_ENV_VAR = "AWS_WEB_IDENTITY_TOKEN_FILE"
+
+    val roleArnF =
+      SystemF.env[F](AWS_ROLE_ARN_ENV_VAR)
+    val roleSessionNameF =
+      SystemF.envOpt[F](AWS_ROLE_SESSION_NAME_ENV_VAR).flatMap {
+        case Some(str) => str.pure[F]
+        case None =>
+          Timer[F].clock.realTime(MILLISECONDS).map("aws-sdk-java-" + _)
+      }
+    val webIdTokenFileF = SystemF.env[F](AWS_WEB_IDENTITY_TOKEN_FILE_ENV_VAR)
+
+    // TODO: add and fix RetriableServerError
+    val credF = for {
+      roleArn <- roleArnF
+      roleSessionName <- roleSessionNameF
+      webIdTokenFile <- webIdTokenFileF
+    } yield {
+      temporaryCredentials[F](
+        refresh(roleArn, roleSessionName, webIdTokenFile),
+        ttl,
+        refreshBefore
+      )
+    }
+
+    Resource.eval(credF).flatten
   }
 
   private def onError[F[_]: Applicative]: Response[F] => F[Throwable] =
