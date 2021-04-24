@@ -1,6 +1,6 @@
 package sqs4s.api.lo
 
-import cats.effect.{Clock, IO}
+import cats.effect.{Blocker, Clock, IO}
 import org.http4s.Uri
 import org.http4s.client.blaze.BlazeClientBuilder
 import org.typelevel.log4cats.slf4j.Slf4jLogger
@@ -29,7 +29,8 @@ class CreateQueueItSpec extends IOSpec {
   it should "raise error for error response" in {
     val resources = for {
       client <- BlazeClientBuilder[IO](ec).resource
-      cred <- Credentials.chain[IO](client)
+      blocker <- Blocker[IO]
+      cred <- Credentials.of[IO].all(client, blocker)
     } yield (client, cred)
     resources.use {
       case (client, cred) =>

@@ -1,8 +1,7 @@
 package sqs4s.auth
 
-import cats.Applicative
+import cats.{Applicative, ApplicativeError}
 import cats.effect.{Blocker, Concurrent, ContextShift, Resource, Sync, Timer}
-import cats.instances.queue
 import cats.syntax.all._
 import fs2._
 import fs2.io.file
@@ -15,11 +14,12 @@ import org.http4s.scalaxml._
 import org.http4s.syntax.all._
 import org.http4s._
 import sqs4s.api.errors.UnexpectedResponseError
-import sqs4s.api.lo.CreateQueue
 import sqs4s.auth.errors._
 
+import java.io.IOException
 import java.nio.file.Paths
 import java.time.Instant
+import scala.concurrent.TimeoutException
 import scala.concurrent.duration._
 import scala.util.Try
 import scala.xml.Elem
@@ -50,6 +50,9 @@ object Credentials {
     new Credentials[F] {
       def get: F[Credential] = credF
     }
+
+  def of[F[_]: ApplicativeError[*[_], Throwable]]: Resource[F, Credentials[F]] =
+    Resource.eval(NoValidAuthMethodError.raiseError[F, Credentials[F]])
 
   def basic[F[_]: Applicative](
     accessKey: String,
@@ -83,18 +86,39 @@ object Credentials {
   def chain[F[_]: Concurrent: Timer](
     client: Client[F],
     ttl: FiniteDuration = 6.hours,
-    refreshBefore: FiniteDuration = 5.minutes
+    refreshBefore: FiniteDuration = 5.minutes,
+    allowRedirect: Boolean = true
   ): Resource[F, Credentials[F]] = {
     val env = envVar[F]
     val sys = sysProp[F]
-    val container = containerMetadata[F](client, ttl, refreshBefore)
-    val instance = instanceMetadata[F](client, ttl, refreshBefore)
+    val container =
+      containerMetadata[F](client, ttl, refreshBefore, allowRedirect)
+    val instance =
+      instanceMetadata[F](client, ttl, refreshBefore, allowRedirect)
 
-    val tryAllInOrder = env orElse sys orElse container orElse instance
+    val tryAllInOrder =
+      env orElse sys orElse container orElse instance
 
     tryAllInOrder.handleErrorWith { _ =>
       Resource.eval(NoValidAuthMethodError.raiseError)
     }
+  }
+
+  def all[F[_]: Concurrent: ContextShift: Timer](
+    client: Client[F],
+    blocker: Blocker,
+    ttl: FiniteDuration = 6.hours,
+    refreshBefore: FiniteDuration = 5.minutes,
+    allowRedirect: Boolean = true
+  ): Resource[F, Credentials[F]] = {
+    val sts = stsAssumeRoleWithWebIdentitySession[F](
+      client,
+      blocker,
+      ttl,
+      refreshBefore,
+      allowRedirect
+    )
+    chain[F](client, ttl, refreshBefore, allowRedirect) orElse sts
   }
 
   def envVar[F[_]: Sync]: Resource[F, Credentials[F]] =
@@ -287,15 +311,29 @@ object Credentials {
         )
       )
 
-      def parseResponse(xml: Elem): Option[CredentialResponse] =
-        for {
-          node <- (xml \\ "Credentials").headOption
-          st <- Option((node \ "SessionToken").text)
-          sak <- Option((node \ "SecretAccessKey").text)
-          expStr <- Option((node \ "Expiration").text)
-          exp <- Try(Instant.parse(expStr)).toOption
-          akid <- Option((node \ "AccessKeyId").text)
-        } yield CredentialResponse(akid, sak, st, None, exp)
+      def parseResponse(xml: Elem): Either[Throwable, CredentialResponse] = {
+        val credOpt =
+          for {
+            node <- (xml \\ "Credentials").headOption
+            st <- Option((node \ "SessionToken").text)
+            sak <- Option((node \ "SecretAccessKey").text)
+            expStr <- Option((node \ "Expiration").text)
+            exp <- Try(Instant.parse(expStr)).toOption
+            akid <- Option((node \ "AccessKeyId").text)
+          } yield CredentialResponse(akid, sak, st, None, exp)
+
+        lazy val errOpt =
+          for {
+            node <- (xml \\ "Credentials").headOption
+            st <- Option((node \ "SessionToken").text)
+            sak <- Option((node \ "SecretAccessKey").text)
+            expStr <- Option((node \ "Expiration").text)
+            exp <- Try(Instant.parse(expStr)).toOption
+            akid <- Option((node \ "AccessKeyId").text)
+          } yield CredentialResponse(akid, sak, st, None, exp)
+
+        Either.fromOption(credOpt, )
+      }
 
       for {
         token <- file.readAll[F](
@@ -311,12 +349,14 @@ object Credentials {
             UnexpectedResponseError("AssumeRoleWithWebIdentityResponse", resp)
           )
       } yield cred
-
     }
 
     val AWS_ROLE_ARN_ENV_VAR = "AWS_ROLE_ARN"
     val AWS_ROLE_SESSION_NAME_ENV_VAR = "AWS_ROLE_SESSION_NAME"
     val AWS_WEB_IDENTITY_TOKEN_FILE_ENV_VAR = "AWS_WEB_IDENTITY_TOKEN_FILE"
+
+    val SDK_DEFAULT_BASE_DELAY = 100
+    val SDK_DEFAULT_THROTTLED_BASE_DELAY = 500
 
     val roleArnF =
       SystemF.env[F](AWS_ROLE_ARN_ENV_VAR)
@@ -344,20 +384,35 @@ object Credentials {
     Resource.eval(credF).flatten
   }
 
-  private def onError[F[_]: Applicative]: Response[F] => F[Throwable] =
-    resp => {
-      if (resp.status.responseClass == Status.ServerError) {
-        RetriableServerError.pure[F].widen
-      } else {
-        UnknownAuthError(resp.status).pure[F].widen
+  private def onError[F[_]: Applicative]: Response[F] => F[Throwable] = {
+    resp =>
+      {
+        if (resp.status.responseClass == Status.ServerError) {
+          RetriableServerError.pure[F].widen
+        } else {
+          UnknownAuthError(resp.status).pure[F].widen
+        }
       }
+  }
+
+  // https://github.com/aws/aws-sdk-java/blob/79b4564b3f2496040e317abd057c1b56802c683a/aws-java-sdk-core/src/main/java/com/amazonaws/retry/PredefinedBackoffStrategies.java#L129
+  private def retryBackOff[F[_]: Timer: RaiseThrowable, T](
+    f: F[T],
+    base: FiniteDuration
+  ): F[T] = {
+    val cond: Throwable => Boolean = {
+      case _: TimeoutException => true
+      case _: IOException => true
+
     }
+    Stream.retry[F, T](f, base, _ * 2, 30, cond).compile.lastOrError
+  }
 
   private def temporaryCredentials[F[_]: Concurrent: Timer](
     refresh: F[CredentialResponse],
     ttl: FiniteDuration,
     refreshBefore: FiniteDuration
-  ): Resource[F, Credentials[F]] =
+  ) =
     Resource.eval {
       refresh.map { init =>
         Stream

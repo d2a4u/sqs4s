@@ -1,7 +1,7 @@
 package sqs4s.api.hi
 
 import cats.effect.concurrent.Ref
-import cats.effect.{Clock, IO, Resource}
+import cats.effect.{Blocker, Clock, IO, Resource}
 import cats.implicits._
 import fs2.Stream
 import fs2.concurrent.SignallingRef
@@ -12,6 +12,7 @@ import sqs4s.IOSpec
 import sqs4s.api.lo.{DeleteMessageBatch, SendMessageBatch}
 import sqs4s.api.{SqsConfig, _}
 import sqs4s.auth.Credentials
+import sqs4s.auth.syntax._
 
 import scala.concurrent.duration._
 
@@ -36,7 +37,8 @@ class ClientItSpec extends IOSpec {
   val producerConsumerResource =
     for {
       client <- clientResource
-      cred <- Credentials.chain(client)
+      blocker <- Blocker.apply[IO]
+      cred <- Credentials.of[IO].all(client, blocker)
       rootConfig = SqsConfig(sqsRootEndpoint, cred, region)
       consumerProducer <-
         TestUtil.queueResource[IO](client, rootConfig, logger).map {
