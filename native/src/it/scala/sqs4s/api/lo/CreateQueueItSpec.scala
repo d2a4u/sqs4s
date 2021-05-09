@@ -6,7 +6,7 @@ import org.http4s.client.blaze.BlazeClientBuilder
 import org.typelevel.log4cats.slf4j.Slf4jLogger
 import sqs4s.IOSpec
 import sqs4s.api.SqsConfig
-import sqs4s.api.errors.AwsSqsError
+import sqs4s.errors.AwsSqsError
 import sqs4s.auth.Credentials
 
 import scala.concurrent.duration.TimeUnit
@@ -30,7 +30,7 @@ class CreateQueueItSpec extends IOSpec {
     val resources = for {
       client <- BlazeClientBuilder[IO](ec).resource
       blocker <- Blocker[IO]
-      cred <- Credentials.of[IO].all(client, blocker)
+      cred <- Credentials.all[IO](client, blocker)
     } yield (client, cred)
     resources.use {
       case (client, cred) =>
