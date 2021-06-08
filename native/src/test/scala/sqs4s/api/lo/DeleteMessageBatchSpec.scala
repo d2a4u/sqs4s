@@ -8,7 +8,7 @@ import org.typelevel.log4cats.slf4j.Slf4jLogger
 import sqs4s.IOSpec
 import sqs4s.auth.Credentials
 import sqs4s.api.SqsConfig
-import sqs4s.api.errors.UnexpectedResponseError
+import sqs4s.errors.UnexpectedResponseError
 
 import scala.concurrent.duration._
 import scala.xml.XML
