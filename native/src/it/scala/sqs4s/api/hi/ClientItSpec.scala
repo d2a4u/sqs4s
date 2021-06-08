@@ -1,7 +1,7 @@
 package sqs4s.api.hi
 
 import cats.effect.concurrent.Ref
-import cats.effect.{Clock, IO, Resource}
+import cats.effect.{Blocker, Clock, IO, Resource}
 import cats.implicits._
 import fs2.Stream
 import fs2.concurrent.SignallingRef
@@ -36,7 +36,8 @@ class ClientItSpec extends IOSpec {
   val producerConsumerResource =
     for {
       client <- clientResource
-      cred <- Credentials.chain(client)
+      blocker <- Blocker.apply[IO]
+      cred <- Credentials.all[IO](client, blocker)
       rootConfig = SqsConfig(sqsRootEndpoint, cred, region)
       consumerProducer <-
         TestUtil.queueResource[IO](client, rootConfig, logger).map {

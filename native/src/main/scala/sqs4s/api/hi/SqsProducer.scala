@@ -8,7 +8,7 @@ import fs2.Stream
 import org.http4s.client.Client
 import org.typelevel.log4cats.Logger
 import org.typelevel.log4cats.slf4j.Slf4jLogger
-import sqs4s.api.errors.MessageTooLarge
+import sqs4s.errors.MessageTooLarge
 import sqs4s.api.lo.{SendMessage, SendMessageBatch}
 import sqs4s.serialization.SqsSerializer
 
