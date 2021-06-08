@@ -2,7 +2,7 @@ package sqs4s.auth
 
 import cats.syntax.all._
 import cats.effect.Sync
-import sqs4s.auth.errors.{NoEnvironmentVariablesFound, NoSystemPropertiesFound}
+import sqs4s.errors.{NoEnvironmentVariablesFound, NoSystemPropertiesFound}
 
 object SystemF {
   def env[F[_]: Sync](name: String): F[String] =
