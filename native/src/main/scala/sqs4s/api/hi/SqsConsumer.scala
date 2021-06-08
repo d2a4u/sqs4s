@@ -9,7 +9,7 @@ import fs2._
 import org.http4s.client.Client
 import org.typelevel.log4cats.Logger
 import org.typelevel.log4cats.slf4j.Slf4jLogger
-import sqs4s.api.errors.{DeleteMessageBatchErrors, RetriableServerError}
+import sqs4s.errors.{DeleteMessageBatchErrors, RetriableServerError}
 import sqs4s.api.lo._
 import sqs4s.serialization.SqsDeserializer
 
