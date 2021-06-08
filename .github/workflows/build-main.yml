@@ -40,6 +40,7 @@ jobs:
   tag-release:
     needs: build-tests
     runs-on: ubuntu-20.04
+    concurrency: ci-${{ github.ref }}
     steps:
       - uses: actions/checkout@v2
         with:
