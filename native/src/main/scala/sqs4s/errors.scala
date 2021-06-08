@@ -1,16 +1,59 @@
-package sqs4s.api
+package sqs4s
 
 import cats.Show
+import cats.implicits._
 import cats.data.NonEmptyList
-import cats.syntax.all._
+import org.http4s.Status
 import sqs4s.api.lo.DeleteMessageBatch
 
 import scala.xml.Elem
 
 object errors {
-  private val ExpiredTokenCode = "ExpiredToken"
+  private val RetriableErrorCodes = Set(
+    "ExpiredToken",
+    "IDPCommunicationError",
+    "IDPRejectedClaim",
+    "InvalidIdentityToken",
+    "RequestExpired",
+    "InternalFailure",
+    "NotAuthorized",
+    "ThrottlingException"
+  )
 
-  sealed trait SqsError extends Exception
+  abstract class SqsError extends Exception
+
+  abstract class AuthError extends SqsError
+
+  final case object NoInstanceProfileCredentialFound extends AuthError {
+    override def getMessage: String = "Missing role"
+  }
+
+  final case class NoEnvironmentVariablesFound(name: String) extends AuthError {
+    override def getMessage: String =
+      s"Missing $name environment variable"
+  }
+
+  final case class NoSystemPropertiesFound(name: String) extends AuthError {
+    override def getMessage: String =
+      s"Missing $name system property"
+  }
+
+  final case class UnknownAuthError(status: Status) extends AuthError {
+    override def getMessage: String =
+      s"Unknown error while getting credential, status ${status.code}"
+  }
+
+  final case object NoValidAuthMethodError extends AuthError {
+    override def getMessage: String =
+      "Could not find valid credential in credentials chain"
+  }
+
+  final case object UnauthorizedAuthError extends AuthError
+
+  final case class RetriableTokenError(message: String, requestId: String)
+      extends AuthError {
+    override def getMessage: String = message
+  }
 
   final case class RetriableServerError(raw: String) extends SqsError
 
@@ -49,11 +92,6 @@ object errors {
     errors: NonEmptyList[DeleteMessageBatch.Error]
   ) extends SqsError
 
-  final case class ExpiredTokenError(message: String, requestId: String)
-      extends SqsError {
-    override def getMessage: String = message
-  }
-
   object SqsError {
     implicit val show: Show[SqsError] = Show.show[SqsError](_.getMessage)
 
@@ -65,8 +103,8 @@ object errors {
         (xml \\ "RequestId").headOption.map(_.text)
       ).mapN { (typ, code, msg, id) =>
         code match {
-          case ExpiredTokenCode =>
-            ExpiredTokenError(msg, id)
+          case c if RetriableErrorCodes.contains(c) =>
+            RetriableTokenError(msg, id)
           case _ =>
             AwsSqsError(typ, code, msg, id)
         }
