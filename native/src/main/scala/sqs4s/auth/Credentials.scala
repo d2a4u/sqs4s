@@ -122,7 +122,7 @@ object Credentials {
   def all[F[_]: Concurrent: ContextShift: Timer](
     client: Client[F],
     blocker: Blocker,
-    ttl: FiniteDuration = 6.hours,
+    ttl: FiniteDuration = 3600.seconds,
     refreshBefore: FiniteDuration = 5.minutes,
     allowRedirect: Boolean = true
   ): Resource[F, Credentials[F]] = {
