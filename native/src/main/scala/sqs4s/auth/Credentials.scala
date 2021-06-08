@@ -331,7 +331,6 @@ object Credentials {
         Map(
           "Action" -> "AssumeRoleWithWebIdentity",
           "DurationSeconds" -> ttl.toSeconds.toString,
-          "ProviderId" -> "www.amazon.com",
           "RoleSessionName" -> roleSessionName,
           "RoleArn" -> roleArn,
           "WebIdentityToken" -> webIdToken,
