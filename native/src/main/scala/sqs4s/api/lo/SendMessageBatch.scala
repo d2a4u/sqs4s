@@ -6,7 +6,7 @@ import fs2.Chunk
 import org.http4s.Request
 import org.typelevel.log4cats.Logger
 import sqs4s.api.SqsConfig
-import sqs4s.api.errors.UnexpectedResponseError
+import sqs4s.errors.UnexpectedResponseError
 import sqs4s.serialization.SqsSerializer
 
 import scala.concurrent.duration.Duration

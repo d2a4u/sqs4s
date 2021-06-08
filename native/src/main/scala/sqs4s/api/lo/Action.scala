@@ -9,8 +9,8 @@ import org.http4s.client.Client
 import org.http4s.scalaxml._
 import org.http4s.{Request, Response, Status}
 import org.typelevel.log4cats.Logger
-import sqs4s.api.errors._
-import sqs4s.auth.errors.UnauthorizedAuthError
+import sqs4s.errors._
+import sqs4s.errors.UnauthorizedAuthError
 
 import scala.concurrent.duration._
 import scala.xml.{Elem, XML}
@@ -58,7 +58,9 @@ abstract class Action[F[_]: Sync: Timer, T] {
       _ => 10.millis,
       10,
       {
-        case _: ExpiredTokenError => true
+        case _: RetriableTokenError => true
+        case UnauthorizedAuthError => true
+        case _: RetriableServerError => true
         case _ => false
       }
     ).compile.lastOrError
