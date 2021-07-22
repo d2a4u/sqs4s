@@ -21,7 +21,7 @@ lazy val dependencies = Seq(
   "org.typelevel" %% "log4cats-slf4j" % log4catsVersion,
   "co.fs2" %% "fs2-core" % fs2Version,
   "org.scala-lang.modules" %% "scala-collection-compat" % "2.4.3",
-  "org.scala-lang.modules" %% "scala-xml" % "1.3.0",
+  "org.scala-lang.modules" %% "scala-xml" % "2.0.1",
   "javax.xml.bind" % "jaxb-api" % "2.4.0-b180830.0359"
 )
 
