@@ -1,7 +1,7 @@
 import sbt.Keys.organization
 import sbt.addCompilerPlugin
 
-val catsVersion = "2.5.0"
+val catsVersion = "2.7.0"
 val catsEffectVersion = "2.4.1"
 val circeVersion = "0.13.0"
 val fs2Version = "2.5.4"
