@@ -7,7 +7,7 @@ val circeVersion = "0.13.0"
 val fs2Version = "2.5.4"
 val http4sVersion = "0.21.22"
 val log4catsVersion = "1.2.2"
-val logbackVersion = "1.2.3"
+val logbackVersion = "1.2.8"
 
 lazy val dependencies = Seq(
   "io.circe" %% "circe-core" % circeVersion,
