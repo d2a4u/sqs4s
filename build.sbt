@@ -37,8 +37,8 @@ lazy val testDependencies = Seq(
 ThisBuild / organization := "io.github.d2a4u"
 
 lazy val commonSettings = Seq(
-  scalaVersion := "2.13.5",
-  crossScalaVersions := Seq("2.12.13", "2.13.5"),
+  scalaVersion := "2.13.8",
+  crossScalaVersions := Seq("2.12.13", "2.13.8"),
   Test / parallelExecution := false,
   scalafmtOnCompile := true,
   licenses += ("MIT", url("http://opensource.org/licenses/MIT")),
