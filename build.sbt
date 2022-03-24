@@ -5,7 +5,7 @@ val catsVersion = "2.5.0"
 val catsEffectVersion = "2.4.1"
 val circeVersion = "0.13.0"
 val fs2Version = "2.5.4"
-val http4sVersion = "0.21.22"
+val http4sVersion = "0.21.33"
 val log4catsVersion = "1.2.2"
 val logbackVersion = "1.2.3"
 
