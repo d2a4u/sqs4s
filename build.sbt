@@ -30,7 +30,7 @@ lazy val testDependencies = Seq(
   "io.circe" %% "circe-parser" % circeVersion,
   "org.http4s" %% "http4s-blaze-client" % http4sVersion,
   "ch.qos.logback" % "logback-classic" % logbackVersion,
-  "org.scalatest" %% "scalatest" % "3.2.0",
+  "org.scalatest" %% "scalatest" % "3.2.17",
   "org.scalacheck" %% "scalacheck" % "1.14.3"
 )
 
